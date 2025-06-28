@@ -8,7 +8,8 @@ interface AuthContextType {
   user: AuthUser | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, organizationName: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
 }
@@ -54,10 +55,19 @@ export function useAuthState() {
     }
   }
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, organizationName: string) => {
     setLoading(true)
     try {
-      await authService.signUp(email, password)
+      await authService.signUp(email, password, organizationName)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signInWithGoogle = async () => {
+    setLoading(true)
+    try {
+      await authService.signInWithGoogle()
     } finally {
       setLoading(false)
     }
@@ -81,6 +91,7 @@ export function useAuthState() {
     loading,
     signIn,
     signUp,
+    signInWithGoogle,
     signOut,
     resetPassword
   }

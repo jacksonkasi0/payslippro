@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useRouter } from "next/navigation"
 
 // ** import icons
 import { GalleryVerticalEnd, Eye, EyeOff } from "lucide-react"
@@ -8,22 +9,53 @@ import { GalleryVerticalEnd, Eye, EyeOff } from "lucide-react"
 // ** import shared components
 import { Button, Input, Label, Typography } from "@/components/ui"
 
+// ** import hooks
+import { useAuth } from "@/hooks/useAuth"
+
 export default function LoginPage() {
   // Constants
   const APP_NAME = "PaySlip Pro"
   
+  // Hooks
+  const router = useRouter()
+  const { signIn, signInWithGoogle } = useAuth()
+  
   // Local State
   const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
   // Event Handlers
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Handle form submission
+    setError(null)
+    setIsLoading(true)
+    
+    const formData = new FormData(e.currentTarget)
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+    
+    try {
+      await signIn(email, password)
+      router.push('/dashboard')
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleGoogleLogin = () => {
-    // Handle Google login
-    console.log("Google login clicked")
+  const handleGoogleLogin = async () => {
+    setError(null)
+    setIsLoading(true)
+    
+    try {
+      await signInWithGoogle()
+      // Google OAuth will handle the redirect
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with Google')
+      setIsLoading(false)
+    }
   }
 
   const togglePasswordVisibility = () => {
@@ -53,10 +85,22 @@ export default function LoginPage() {
                   Enter your email to login
                 </Typography>
               </div>
+              {error && (
+                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
               <div className="grid gap-6">
                 <div className="grid gap-3">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="m@example.com" required />
+                  <Input 
+                    id="email" 
+                    name="email"
+                    type="email" 
+                    placeholder="m@example.com" 
+                    required 
+                    disabled={isLoading}
+                  />
                 </div>
                 <div className="grid gap-3">
                   <div className="flex items-center">
@@ -71,9 +115,11 @@ export default function LoginPage() {
                   <div className="relative">
                     <Input 
                       id="password" 
+                      name="password"
                       type={showPassword ? "text" : "password"} 
                       className="pr-10"
                       required 
+                      disabled={isLoading}
                     />
                     <Button
                       type="button"
@@ -91,8 +137,10 @@ export default function LoginPage() {
                     </Button>
                   </div>
                 </div>
-                <Button type="submit" className="w-full">
-                  <Typography variant="T_SemiBold_H6">Login</Typography>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Typography variant="T_SemiBold_H6">
+                    {isLoading ? "Signing in..." : "Login"}
+                  </Typography>
                 </Button>
                 <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
                   <Typography 
@@ -107,6 +155,7 @@ export default function LoginPage() {
                   variant="outline" 
                   className="w-full"
                   onClick={handleGoogleLogin}
+                  disabled={isLoading}
                 >
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                     <path

@@ -9,16 +9,47 @@ import type { AuthUser } from '@/lib/types'
  */
 export const authService = {
   /**
-   * Sign up new user
+   * Sign up new user with organization
    */
-  async signUp(email: string, password: string) {
-    const { data, error } = await supabase.auth.signUp({
+  async signUp(email: string, password: string, organizationName: string) {
+    // Start a Supabase transaction
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
     })
     
-    if (error) throw error
-    return data
+    if (authError) throw authError
+    if (!authData.user) throw new Error('Failed to create user')
+
+    try {
+      // Create organization
+      const { data: organization, error: orgError } = await supabase
+        .from('organizations')
+        .insert({ name: organizationName })
+        .select()
+        .single()
+      
+      if (orgError) throw orgError
+
+      // Create admin user profile
+      const { error: adminError } = await supabase
+        .from('admin_users')
+        .insert({
+          id: authData.user.id,
+          email: authData.user.email!,
+          role: 'admin',
+          organization_id: organization.id
+        })
+      
+      if (adminError) throw adminError
+
+      return authData
+    } catch (error) {
+      // If organization or admin user creation fails, we should ideally clean up the auth user
+      // But Supabase doesn't allow deleting unconfirmed users programmatically
+      console.error('Failed to complete signup:', error)
+      throw error
+    }
   },
 
   /**
@@ -28,6 +59,21 @@ export const authService = {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
+    })
+    
+    if (error) throw error
+    return data
+  },
+
+  /**
+   * Sign in with Google
+   */
+  async signInWithGoogle() {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      }
     })
     
     if (error) throw error
