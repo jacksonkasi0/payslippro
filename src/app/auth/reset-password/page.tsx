@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import React, { useState, Suspense } from "react"
+import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -10,7 +10,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 
 // ** import icons
-import { GalleryVerticalEnd, Eye, EyeOff, ArrowLeft, AlertCircle, RefreshCw } from "lucide-react"
+import { GalleryVerticalEnd, Eye, EyeOff, ArrowLeft, AlertCircle } from "lucide-react"
 
 // ** import shared components
 import { Button } from "@/components/ui/button"
@@ -50,17 +50,14 @@ function ResetPasswordPageContent() {
   
   // Hooks
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { updatePassword } = useAuth()
-  
+
   // Local State
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
-  const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
-  const [tokenExpired, setTokenExpired] = useState(false)
   
   // Form
   const form = useForm<ResetPasswordFormValues>({
@@ -71,140 +68,36 @@ function ResetPasswordPageContent() {
     },
   })
 
-  // Check if we have valid reset token on mount
-  useEffect(() => {
-    const checkToken = () => {
-      // Check for verification flag and required token parameter
-      const verified = searchParams.get('verified')
-      const tokenHash = searchParams.get('token_hash')
-      const type = searchParams.get('type')
-      
-      console.log('Token validation check:', {
-        verified,
-        hasTokenHash: !!tokenHash,
-        type,
-        tokenHashPreview: tokenHash ? `${tokenHash.substring(0, 8)}...` : 'none',
-        timestamp: new Date().toISOString()
-      })
-      
-      // For password reset, we require verification flag, token_hash, and recovery type
-      const hasValidParams = verified === 'true' && tokenHash && type === 'recovery'
-      
-      if (!hasValidParams) {
-        console.warn('Invalid token parameters detected:', {
-          verified,
-          tokenHash: tokenHash ? 'present' : 'missing',
-          type
-        })
-        setError('Invalid or expired reset link. The link may be malformed or has expired. Please request a new password reset.')
-        setIsValidToken(false)
-      } else {
-        console.log('Token parameters are valid')
-        setIsValidToken(true)
-      }
-    }
-
-    checkToken()
-  }, [searchParams])
-  
   // Event Handlers
   const onSubmit = async (values: ResetPasswordFormValues) => {
-    if (!isValidToken) return
-    
+    console.log('Form submission started')
     setError(null)
-    setTokenExpired(false)
     setIsLoading(true)
     
     try {
-      console.log('Starting password update process...', {
+      console.log('Updating password for authenticated user...', {
         timestamp: new Date().toISOString()
       })
       
-      // Get the token from URL parameters
-      const tokenHash = searchParams.get('token_hash')
-      
-      console.log('Token parameters for session establishment:', { 
-        hasTokenHash: !!tokenHash,
-        tokenHashLength: tokenHash?.length,
-        timestamp: new Date().toISOString()
+      // Add timeout to prevent hanging
+      const updatePromise = updatePassword(values.password)
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Password update timed out')), 30000) // 30 second timeout
       })
       
-      // Require token_hash for password reset flow
-      if (!tokenHash) {
-        throw new Error('Invalid reset token format. Please request a new password reset link.')
-      }
-      
-      // Establish authenticated session with the reset token
-      console.log('Establishing authenticated session...')
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      
-      // Establish session using the reset token
-      try {
-        console.log('Using verifyOtp with token_hash for password recovery', {
-          tokenHashPreview: `${tokenHash.substring(0, 8)}...`,
-          timestamp: new Date().toISOString()
-        })
-        
-        const sessionResult = await supabase.auth.verifyOtp({
-          type: 'recovery',
-          token_hash: tokenHash,
-        })
-        
-        console.log('Session establishment result:', {
-          hasError: !!sessionResult?.error,
-          errorCode: sessionResult?.error?.message,
-          hasSession: !!sessionResult?.data?.session,
-          hasUser: !!sessionResult?.data?.user,
-          timestamp: new Date().toISOString()
-        })
-        
-        if (sessionResult?.error) {
-          console.error('Session establishment failed:', sessionResult.error)
-          
-          // Check for specific error types
-          const errorMessage = sessionResult.error.message.toLowerCase()
-          
-          if (errorMessage.includes('expired') || sessionResult.error.message.includes('otp_expired')) {
-            console.log('Token expired error detected')
-            setTokenExpired(true)
-            throw new Error('Password reset token has expired. Please request a new reset link.')
-          } else if (errorMessage.includes('invalid') || errorMessage.includes('not found')) {
-            throw new Error('Password reset token is invalid. Please request a new reset link.')
-          } else {
-            throw new Error('Password reset session could not be established. Please request a new reset link.')
-          }
-        }
-        
-        console.log('Session established successfully')
-      } catch (sessionError) {
-        console.error('Session establishment error:', sessionError)
-        
-        // If it's already our custom error, re-throw it
-        if (sessionError instanceof Error && sessionError.message.includes('Password reset')) {
-          throw sessionError
-        }
-        
-        // Otherwise, provide a generic error message
-        throw new Error('Failed to establish password reset session. Please request a new reset link.')
-      }
-      
-      // Update the password
-      console.log('Updating password...', {
-        timestamp: new Date().toISOString()
-      })
-      await updatePassword(values.password)
-      console.log('Password updated successfully')
+      // Race between update and timeout
+      await Promise.race([updatePromise, timeoutPromise])
+      console.log('Password update completed successfully')
       
       setIsSuccess(true)
       toast.success("Password updated successfully!", {
-        description: "Your password has been reset. You can now log in with your new password.",
+        description: "Your password has been reset. Redirecting to dashboard...",
         duration: 6000,
       })
       
-      // Redirect to login after 2 seconds
+      // Redirect to dashboard after 2 seconds
       setTimeout(() => {
-        router.push('/auth/login')
+        router.push('/dashboard')
       }, 2000)
     } catch (err) {
       console.error('Password update error:', err)
@@ -212,22 +105,16 @@ function ResetPasswordPageContent() {
       let errorMessage = 'Failed to update password'
       
       if (err instanceof Error) {
-        // Use our custom error messages if available
-        if (err.message.includes('Password reset')) {
-          errorMessage = err.message
-          // Check if it's a token expiration error
-          if (err.message.includes('expired')) {
-            setTokenExpired(true)
-          }
+        if (err.message.includes('timed out')) {
+          errorMessage = 'Password update timed out. Please try again or request a new reset link.'
         } else if (err.message.includes('session')) {
-          errorMessage = 'Password reset session has expired. Please request a new reset link.'
-          setTokenExpired(true)
+          errorMessage = 'Your session has expired. Please request a new password reset link.'
         } else if (err.message.includes('weak')) {
           errorMessage = 'Password is too weak. Please choose a stronger password.'
         } else if (err.message.includes('8 characters')) {
-          errorMessage = err.message // Use our client-side validation message
+          errorMessage = err.message
         } else if (err.message.includes('uppercase')) {
-          errorMessage = err.message // Use our client-side validation message
+          errorMessage = err.message
         } else {
           errorMessage = 'Failed to update password. Please try again.'
         }
@@ -238,6 +125,7 @@ function ResetPasswordPageContent() {
         description: errorMessage,
       })
     } finally {
+      console.log('Form submission completed, setting loading to false')
       setIsLoading(false)
     }
   }
@@ -260,43 +148,6 @@ function ResetPasswordPageContent() {
     ]
     
     return checks
-  }
-
-  // Loading state while checking token
-  if (isValidToken === null) {
-    return (
-      <div className="grid min-h-svh lg:grid-cols-2">
-        <div className="flex flex-col gap-4 p-6 md:p-10">
-          <div className="flex justify-center gap-2 md:justify-start">
-            <a href="#" className="flex items-center gap-2 font-medium">
-              <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-                <GalleryVerticalEnd className="size-4" />
-              </div>
-              <Typography variant="T_SemiBold_H6">{APP_NAME}</Typography>
-            </a>
-          </div>
-          <div className="flex flex-1 items-center justify-center">
-            <div className="w-full max-w-xs">
-              <div className="flex flex-col items-center gap-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <Typography variant="T_Regular_H6" className="text-muted-foreground">
-                  Verifying reset link...
-                </Typography>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-muted relative hidden lg:block">
-          <Image
-            src="/placeholder.svg"
-            alt="Reset password illustration"
-            fill
-            className="object-cover dark:brightness-[0.2] dark:grayscale"
-            priority
-          />
-        </div>
-      </div>
-    )
   }
 
   // Success state
@@ -326,14 +177,14 @@ function ResetPasswordPageContent() {
                     variant="T_Regular_H6" 
                     className="text-muted-foreground text-balance"
                   >
-                    Your password has been successfully updated. You will be redirected to the login page shortly.
+                    Your password has been successfully updated. Redirecting to dashboard...
                   </Typography>
                 </div>
                 
-                <Link href="/auth/login">
+                <Link href="/dashboard">
                   <Button className="w-full">
                     <Typography variant="T_SemiBold_H6">
-                      Continue to Login
+                      Continue to Dashboard
                     </Typography>
                   </Button>
                 </Link>
@@ -345,79 +196,6 @@ function ResetPasswordPageContent() {
           <Image
             src="/placeholder.svg"
             alt="Password reset success illustration"
-            fill
-            className="object-cover dark:brightness-[0.2] dark:grayscale"
-            priority
-          />
-        </div>
-      </div>
-    )
-  }
-
-  // Invalid token state
-  if (!isValidToken) {
-    return (
-      <div className="grid min-h-svh lg:grid-cols-2">
-        <div className="flex flex-col gap-4 p-6 md:p-10">
-          <div className="flex justify-center gap-2 md:justify-start">
-            <a href="#" className="flex items-center gap-2 font-medium">
-              <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-                <GalleryVerticalEnd className="size-4" />
-              </div>
-              <Typography variant="T_SemiBold_H6">{APP_NAME}</Typography>
-            </a>
-          </div>
-          <div className="flex flex-1 items-center justify-center">
-            <div className="w-full max-w-xs">
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col items-center gap-2 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
-                    <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </div>
-                  <Typography variant="T_Bold_H3">Invalid reset link</Typography>
-                  <Typography 
-                    variant="T_Regular_H6" 
-                    className="text-muted-foreground text-balance"
-                  >
-                    This password reset link is invalid or has expired. Please request a new one.
-                  </Typography>
-                </div>
-                
-                {error && (
-                  <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-3">
-                  <Link href="/auth/forgot-password">
-                    <Button className="w-full">
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      <Typography variant="T_SemiBold_H6">
-                        Request new reset link
-                      </Typography>
-                    </Button>
-                  </Link>
-                  
-                  <Link href="/auth/login">
-                    <Button variant="ghost" className="w-full">
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      <Typography variant="T_SemiBold_H6">
-                        Back to login
-                      </Typography>
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-muted relative hidden lg:block">
-          <Image
-            src="/placeholder.svg"
-            alt="Invalid reset link illustration"
             fill
             className="object-cover dark:brightness-[0.2] dark:grayscale"
             priority
@@ -457,21 +235,9 @@ function ResetPasswordPageContent() {
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      <div className="space-y-2">
-                        <Typography variant="T_SemiBold_H6" className="text-sm">
-                          {error}
-                        </Typography>
-                        {tokenExpired && (
-                          <div className="pt-2">
-                            <Link href="/auth/forgot-password">
-                              <Button variant="outline" size="sm" className="w-full">
-                                <RefreshCw className="mr-2 h-3 w-3" />
-                                Request New Reset Link
-                              </Button>
-                            </Link>
-                          </div>
-                        )}
-                      </div>
+                      <Typography variant="T_SemiBold_H6" className="text-sm">
+                        {error}
+                      </Typography>
                     </AlertDescription>
                   </Alert>
                 )}
@@ -498,12 +264,12 @@ function ResetPasswordPageContent() {
                               size="sm"
                               className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                               onClick={() => togglePasswordVisibility('password')}
-                              aria-label={showPassword ? "Hide password" : "Show password"}
+                              disabled={isLoading}
                             >
                               {showPassword ? (
-                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                <EyeOff className="h-4 w-4" />
                               ) : (
-                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                <Eye className="h-4 w-4" />
                               )}
                             </Button>
                           </div>
@@ -513,28 +279,6 @@ function ResetPasswordPageContent() {
                     )}
                   />
 
-                  {/* Password strength indicator */}
-                  {form.watch("password") && (
-                    <div className="space-y-2">
-                      <Typography variant="T_Regular_H6" className="text-sm text-muted-foreground">
-                        Password requirements:
-                      </Typography>
-                      <div className="space-y-1">
-                        {getPasswordStrengthInfo().map((check, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${check.test ? 'bg-green-500' : 'bg-gray-300'}`} />
-                            <Typography 
-                              variant="T_Regular_H6" 
-                              className={`text-xs ${check.test ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
-                            >
-                              {check.text}
-                            </Typography>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
                   <FormField
                     control={form.control}
                     name="confirmPassword"
@@ -556,12 +300,12 @@ function ResetPasswordPageContent() {
                               size="sm"
                               className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                               onClick={() => togglePasswordVisibility('confirmPassword')}
-                              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                              disabled={isLoading}
                             >
                               {showConfirmPassword ? (
-                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                <EyeOff className="h-4 w-4" />
                               ) : (
-                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                <Eye className="h-4 w-4" />
                               )}
                             </Button>
                           </div>
@@ -570,20 +314,41 @@ function ResetPasswordPageContent() {
                       </FormItem>
                     )}
                   />
-                  
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+
+                  {/* Password strength indicator */}
+                  <div className="space-y-2">
+                    <Typography variant="T_SemiBold_H6" className="text-sm">
+                      Password requirements:
+                    </Typography>
+                    <ul className="space-y-1">
+                      {getPasswordStrengthInfo().map((check, index) => (
+                        <li key={index} className="flex items-center gap-2 text-sm">
+                          <div className={`h-2 w-2 rounded-full ${check.test ? 'bg-green-500' : 'bg-gray-300'}`} />
+                          <span className={check.test ? 'text-green-600' : 'text-gray-500'}>
+                            {check.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full"
+                  >
                     <Typography variant="T_SemiBold_H6">
-                      {isLoading ? "Updating..." : "Update password"}
+                      {isLoading ? "Updating password..." : "Update password"}
                     </Typography>
                   </Button>
-                </div>
-                
-                <div className="text-center">
-                  <Link href="/auth/login">
+                  
+                  <Link href="/auth/forgot-password">
                     <Button variant="ghost" className="w-full">
                       <ArrowLeft className="mr-2 h-4 w-4" />
                       <Typography variant="T_SemiBold_H6">
-                        Back to login
+                        Request new reset link
                       </Typography>
                     </Button>
                   </Link>
@@ -606,21 +371,9 @@ function ResetPasswordPageContent() {
   )
 }
 
-// Loading component for Suspense fallback
-function LoadingFallback() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    </div>
-  )
-}
-
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<LoadingFallback />}>
+    <Suspense fallback={<div>Loading...</div>}>
       <ResetPasswordPageContent />
     </Suspense>
   )

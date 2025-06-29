@@ -278,11 +278,11 @@ export const authService = {
   /**
    * Reset password
    * Security: Rate limited by Supabase to prevent abuse
-   * Uses direct redirect to client-side intermediate confirmation to prevent token consumption
+   * Uses PKCE flow with server-side token verification
    */
   async resetPassword(email: string): Promise<void> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/confirm-reset`,
+      redirectTo: `${window.location.origin}/auth/confirm?next=/auth/reset-password`,
     })
     
     if (error) {
@@ -303,6 +303,8 @@ export const authService = {
    * Security: Must be called within an authenticated session from password reset flow
    */
   async updatePassword(password: string): Promise<void> {
+    console.log('updatePassword called with password length:', password.length)
+    
     // Validate password strength on client side as well
     if (password.length < 8) {
       throw new Error('Password must be at least 8 characters long.')
@@ -312,18 +314,31 @@ export const authService = {
       throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number.')
     }
 
-    const { error } = await supabase.auth.updateUser({
-      password
-    })
+    console.log('Calling supabase.auth.updateUser...')
     
-    if (error) {
-      if (error.message.includes('session')) {
-        throw new Error('Password reset session has expired. Please request a new reset link.')
-      } else if (error.message.includes('weak')) {
-        throw new Error('Password is too weak. Please choose a stronger password.')
-      } else {
-        throw error
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        password
+      })
+      
+      console.log('supabase.auth.updateUser response:', { data, error })
+      
+      if (error) {
+        console.error('Password update error:', error)
+        if (error.message.includes('session')) {
+          throw new Error('Password reset session has expired. Please request a new reset link.')
+        } else if (error.message.includes('weak')) {
+          throw new Error('Password is too weak. Please choose a stronger password.')
+        } else {
+          throw error
+        }
       }
+      
+      console.log('Password updated successfully!')
+      return Promise.resolve()
+    } catch (err) {
+      console.error('updatePassword caught error:', err)
+      throw err
     }
   },
 

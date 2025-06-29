@@ -3,6 +3,19 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { env } from '@/config/env'
 
 export async function updateSession(request: NextRequest) {
+  // Skip Supabase processing for password reset CLIENT pages to prevent token consumption
+  // But allow it for /auth/confirm which needs to verify tokens server-side
+  const isPasswordResetClientRoute = 
+    request.nextUrl.pathname.startsWith('/auth/confirm-reset') ||
+    request.nextUrl.pathname.startsWith('/auth/reset-password')
+
+  // For password reset client routes, return early without any Supabase processing
+  if (isPasswordResetClientRoute) {
+    return NextResponse.next({
+      request,
+    })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
