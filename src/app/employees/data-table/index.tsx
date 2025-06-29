@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { DataTable } from "@/components/data-table/data-table";
 import { getColumns } from "./components/columns";
 import { useExportConfig } from "./utils/config";
@@ -8,8 +9,15 @@ import { ToolbarOptions } from "./components/toolbar-options";
 import { Employee } from "@/lib/schemas/employee-schema";
 
 export default function EmployeeTable() {
+  const [refreshKey, setRefreshKey] = React.useState(0);
+  
+  const handleRefresh = React.useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
+  
   return (
     <DataTable<Employee, any>
+      key={refreshKey}
       getColumns={getColumns}
       exportConfig={useExportConfig()}
       fetchDataFn={fetchEmployees}
@@ -22,6 +30,7 @@ export default function EmployeeTable() {
           allSelectedIds={allSelectedIds}
           totalSelectedCount={totalSelectedCount}
           resetSelection={resetSelection}
+          onRefresh={handleRefresh}
         />
       )}
       config={{
