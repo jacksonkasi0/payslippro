@@ -41,18 +41,9 @@ function ConfirmResetPageContent() {
     const code = searchParams.get('code') || undefined
     const type = searchParams.get('type') || 'recovery' // Default to recovery if not specified
     
-    console.log('Confirm reset page - extracted parameters:', {
-      token: token ? 'present' : 'missing',
-      token_hash: token_hash ? 'present' : 'missing', 
-      code: code ? 'present' : 'missing',
-      type,
-      timestamp: new Date().toISOString()
-    })
-    
     // Check if we have any valid token parameter
     if (token || token_hash || code) {
       setTokenParams({ token, token_hash, code, type })
-      console.log('Valid token parameters found')
     } else {
       console.warn('No valid token parameters found')
       setError('Invalid password reset link. Please request a new one.')
@@ -69,14 +60,6 @@ function ConfirmResetPageContent() {
     setIsLoading(true)
     
     try {
-      console.log('Starting confirmation process with parameters:', {
-        hasToken: !!tokenParams.token,
-        hasTokenHash: !!tokenParams.token_hash,
-        hasCode: !!tokenParams.code,
-        type: tokenParams.type,
-        timestamp: new Date().toISOString()
-      })
-      
       // Add a small delay to show the user something is happening
       await new Promise(resolve => setTimeout(resolve, 500))
       
@@ -86,22 +69,14 @@ function ConfirmResetPageContent() {
       // Use whichever token parameter we have, prioritizing token_hash, then code, then token
       if (tokenParams.token_hash) {
         params.set('token_hash', tokenParams.token_hash)
-        console.log('Using token_hash parameter')
       } else if (tokenParams.code) {
         params.set('token_hash', tokenParams.code) // Pass code as token_hash
-        console.log('Using code parameter as token_hash')
       } else if (tokenParams.token) {
         params.set('token_hash', tokenParams.token) // Pass token as token_hash
-        console.log('Using token parameter as token_hash')
       }
       
       params.set('type', tokenParams.type || 'recovery')
       params.set('verified', 'true')
-      
-      console.log('Redirecting to reset password page with params:', {
-        paramsString: params.toString(),
-        timestamp: new Date().toISOString()
-      })
       
       toast.success("Verification successful!", {
         description: "Redirecting to password reset form...",

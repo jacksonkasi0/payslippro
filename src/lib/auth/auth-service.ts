@@ -35,7 +35,6 @@ export const authService = {
     
     // If no session, email confirmation is required - defer organization creation
     if (!session) {
-      console.log('Email confirmation required - organization will be created after confirmation')
       return authData
     }
 
@@ -224,8 +223,6 @@ export const authService = {
    * Uses server-side API to avoid client-side hanging issues
    */
   async signOut(): Promise<void> {
-    console.log('Client-side signOut called, using server API...')
-    
     try {
       const response = await fetch('/api/auth/signout', {
         method: 'POST',
@@ -234,10 +231,7 @@ export const authService = {
         },
       })
       
-      console.log('Signout server response status:', response.status)
-      
       const result = await response.json()
-      console.log('Signout server response data:', result)
       
       if (!response.ok) {
         throw new Error(result.error || `Server error: ${response.status}`)
@@ -247,15 +241,11 @@ export const authService = {
         throw new Error(result.error || 'Failed to sign out')
       }
       
-      console.log('Signed out successfully via server API!')
-      
       // After successful server-side sign out, refresh client-side auth state
-      console.log('Refreshing client-side auth state...')
       try {
         // Clear the client-side session to ensure auth listeners are notified
         await supabase.auth.signOut()
       } catch (clientSignOutError) {
-        console.log('Client-side sign out call (expected to be already signed out):', clientSignOutError)
         // This is expected since we already signed out server-side
       }
       
@@ -351,8 +341,6 @@ export const authService = {
    * Uses server-side API to avoid client-side hanging issues
    */
   async updatePassword(password: string): Promise<void> {
-    console.log('updatePassword called with password length:', password.length)
-    
     // Validate password strength on client side as well
     if (password.length < 8) {
       throw new Error('Password must be at least 8 characters long.')
@@ -361,8 +349,6 @@ export const authService = {
     if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
       throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number.')
     }
-
-    console.log('Calling server-side password update API...')
     
     try {
       const response = await fetch('/api/auth/update-password', {
@@ -373,10 +359,7 @@ export const authService = {
         body: JSON.stringify({ password }),
       })
       
-      console.log('Server response status:', response.status)
-      
       const result = await response.json()
-      console.log('Server response data:', result)
       
       if (!response.ok) {
         throw new Error(result.error || `Server error: ${response.status}`)
@@ -386,7 +369,6 @@ export const authService = {
         throw new Error(result.error || 'Failed to update password')
       }
       
-      console.log('Password updated successfully via server API!')
       return Promise.resolve()
     } catch (err) {
       console.error('updatePassword caught error:', err)

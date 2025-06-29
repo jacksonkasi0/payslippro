@@ -3,8 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Server-side signout requested')
-    
     const supabase = await createClient()
     
     // Sign out server-side
@@ -17,8 +15,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-
-    console.log('Server-side signout successful')
     
     return NextResponse.json({ 
       success: true,

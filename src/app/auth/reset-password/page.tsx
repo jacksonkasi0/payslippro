@@ -70,15 +70,10 @@ function ResetPasswordPageContent() {
 
   // Event Handlers
   const onSubmit = async (values: ResetPasswordFormValues) => {
-    console.log('Form submission started')
     setError(null)
     setIsLoading(true)
     
     try {
-      console.log('Updating password for authenticated user...', {
-        timestamp: new Date().toISOString()
-      })
-      
       // Server-side calls are more reliable, use longer timeout
       const updatePromise = updatePassword(values.password)
       const timeoutPromise = new Promise((_, reject) => {
@@ -87,7 +82,6 @@ function ResetPasswordPageContent() {
       
       // Race between update and timeout
       await Promise.race([updatePromise, timeoutPromise])
-      console.log('Password update completed successfully')
       
       setIsSuccess(true)
       toast.success("Password updated successfully!", {
@@ -127,7 +121,6 @@ function ResetPasswordPageContent() {
         description: errorMessage,
       })
     } finally {
-      console.log('Form submission completed, setting loading to false')
       setIsLoading(false)
     }
   }
