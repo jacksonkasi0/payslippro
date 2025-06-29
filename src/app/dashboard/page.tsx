@@ -3,8 +3,11 @@
 import { useAuth } from '@/hooks/useAuth'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ModeToggle } from '@/components/mode-toggle'
+import Typography from '@/components/ui/typography'
+import { Users, FileText, Calendar, Settings, Mail, History } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user, loading, signOut } = useAuth()
@@ -36,7 +39,7 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-foreground">PaySlip Pro Dashboard</h1>
+          <Typography variant="T_Bold_H4" className="text-foreground">PaySlip Pro Dashboard</Typography>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
               Welcome, {user.email}
@@ -51,82 +54,150 @@ export default function DashboardPage() {
 
       {/* Main content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-foreground mb-2">
+            <Typography variant="T_Bold_H2" className="text-foreground mb-2">
               Dashboard
-            </h2>
-            <p className="text-muted-foreground">
+            </Typography>
+            <Typography variant="T_Regular_H6" className="text-muted-foreground">
               Manage your organization&apos;s payroll and employee data
-            </p>
+            </Typography>
           </div>
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="p-6 border rounded-lg bg-card">
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">
+              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-2">
                 Total Employees
-              </h3>
-              <p className="text-2xl font-bold text-card-foreground">0</p>
+              </Typography>
+              <Typography variant="T_Bold_H2" className="text-card-foreground">0</Typography>
             </div>
             
             <div className="p-6 border rounded-lg bg-card">
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">
+              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-2">
                 Payslips This Month
-              </h3>
-              <p className="text-2xl font-bold text-card-foreground">0</p>
+              </Typography>
+              <Typography variant="T_Bold_H2" className="text-card-foreground">0</Typography>
             </div>
             
             <div className="p-6 border rounded-lg bg-card">
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">
+              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-2">
                 Departments
-              </h3>
-              <p className="text-2xl font-bold text-card-foreground">0</p>
+              </Typography>
+              <Typography variant="T_Bold_H2" className="text-card-foreground">0</Typography>
             </div>
             
             <div className="p-6 border rounded-lg bg-card">
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">
+              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-2">
                 Pending Emails
-              </h3>
-              <p className="text-2xl font-bold text-card-foreground">0</p>
+              </Typography>
+              <Typography variant="T_Bold_H2" className="text-card-foreground">0</Typography>
             </div>
           </div>
 
-          {/* Quick Actions */}
+          {/* Navigation Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow">
-              <h3 className="text-lg font-semibold text-card-foreground mb-2">
-                Manage Employees
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Add, edit, and manage your organization&apos;s employees
-              </p>
-              <Button className="w-full">
-                View Employees
-              </Button>
-            </div>
+            <Link href="/employees">
+              <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Users className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <Typography variant="T_SemiBold_H5" className="text-card-foreground">
+                    Manage Employees
+                  </Typography>
+                </div>
+                <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
+                  Add, edit, and manage your organization&apos;s employees
+                </Typography>
+                <Button className="w-full">
+                  View Employees
+                </Button>
+              </div>
+            </Link>
             
-            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow">
-              <h3 className="text-lg font-semibold text-card-foreground mb-2">
-                Generate Payslips
-              </h3>
-              <p className="text-muted-foreground mb-4">
+            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <FileText className="h-6 w-6 text-green-600" />
+                </div>
+                <Typography variant="T_SemiBold_H5" className="text-card-foreground">
+                  Generate Payslips
+                </Typography>
+              </div>
+              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
                 Create and send payslips for the current month
-              </p>
+              </Typography>
               <Button className="w-full">
                 Create Payslips
               </Button>
             </div>
             
-            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow">
-              <h3 className="text-lg font-semibold text-card-foreground mb-2">
-                Attendance Tracking
-              </h3>
-              <p className="text-muted-foreground mb-4">
+            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Calendar className="h-6 w-6 text-purple-600" />
+                </div>
+                <Typography variant="T_SemiBold_H5" className="text-card-foreground">
+                  Attendance Tracking
+                </Typography>
+              </div>
+              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
                 Track and manage employee attendance records
-              </p>
+              </Typography>
               <Button className="w-full">
                 View Attendance
+              </Button>
+            </div>
+
+            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Mail className="h-6 w-6 text-orange-600" />
+                </div>
+                <Typography variant="T_SemiBold_H5" className="text-card-foreground">
+                  Email Templates
+                </Typography>
+              </div>
+              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
+                Manage email templates for payslip delivery
+              </Typography>
+              <Button className="w-full">
+                Manage Templates
+              </Button>
+            </div>
+
+            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <History className="h-6 w-6 text-red-600" />
+                </div>
+                <Typography variant="T_SemiBold_H5" className="text-card-foreground">
+                  Send History
+                </Typography>
+              </div>
+              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
+                View history of sent payslips and emails
+              </Typography>
+              <Button className="w-full">
+                View History
+              </Button>
+            </div>
+
+            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <Settings className="h-6 w-6 text-gray-600" />
+                </div>
+                <Typography variant="T_SemiBold_H5" className="text-card-foreground">
+                  Settings
+                </Typography>
+              </div>
+              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
+                Configure organization settings and preferences
+              </Typography>
+              <Button className="w-full">
+                Open Settings
               </Button>
             </div>
           </div>
@@ -134,17 +205,17 @@ export default function DashboardPage() {
           {/* User Profile Info */}
           {user.adminProfile && (
             <div className="mt-8 p-6 border rounded-lg bg-card">
-              <h3 className="text-lg font-semibold text-card-foreground mb-4">
+              <Typography variant="T_SemiBold_H5" className="text-card-foreground mb-4">
                 Your Profile
-              </h3>
+              </Typography>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{user.email}</p>
+                  <Typography variant="T_Regular_H6" className="text-muted-foreground">Email</Typography>
+                  <Typography variant="T_Medium_H6">{user.email}</Typography>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Role</p>
-                  <p className="font-medium capitalize">{user.adminProfile.role}</p>
+                  <Typography variant="T_Regular_H6" className="text-muted-foreground">Role</Typography>
+                  <Typography variant="T_Medium_H6" className="capitalize">{user.adminProfile.role}</Typography>
                 </div>
               </div>
             </div>
