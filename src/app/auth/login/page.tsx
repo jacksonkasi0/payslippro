@@ -6,6 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import Image from "next/image"
+import Link from "next/link"
+import { toast } from "sonner"
 
 // ** import icons
 import { GalleryVerticalEnd, Eye, EyeOff } from "lucide-react"
@@ -40,12 +42,15 @@ export default function LoginPage() {
   
   // Hooks
   const router = useRouter()
-  const { signIn, signInWithGoogle } = useAuth()
+  const { signIn, signInWithGoogle, resendConfirmation } = useAuth()
   
   // Local State
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isResendingEmail, setIsResendingEmail] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showResendOption, setShowResendOption] = useState(false)
+  const [userEmail, setUserEmail] = useState<string>('')
   
   // Form
   const form = useForm<LoginFormValues>({
@@ -59,16 +64,61 @@ export default function LoginPage() {
   // Event Handlers
   const onSubmit = async (values: LoginFormValues) => {
     setError(null)
+    setShowResendOption(false)
     setIsLoading(true)
     
     try {
       await signIn(values.email, values.password)
-      router.push('/dashboard')
+      toast.success("Welcome back!", {
+        description: "Successfully logged in to PaySlip Pro.",
+      })
+      // Add a small delay to ensure auth state is updated
+      setTimeout(() => {
+        router.replace('/dashboard')
+      }, 100)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Invalid email or password'
       setError(errorMessage)
+      
+      // Check if it's an email confirmation error
+      if (errorMessage.toLowerCase().includes('email') && 
+          (errorMessage.toLowerCase().includes('confirm') || 
+           errorMessage.toLowerCase().includes('verify') ||
+           errorMessage.toLowerCase().includes('not confirmed'))) {
+        setShowResendOption(true)
+        setUserEmail(values.email)
+        toast.error("Email not confirmed", {
+          description: "Please check your email and click the confirmation link, or resend the confirmation email.",
+          duration: 6000,
+        })
+      } else {
+        toast.error("Login failed", {
+          description: errorMessage,
+        })
+      }
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleResendConfirmation = async () => {
+    if (!userEmail) return
+    
+    setIsResendingEmail(true)
+    try {
+      await resendConfirmation(userEmail)
+      toast.success("Confirmation email sent!", {
+        description: "Please check your email for the confirmation link.",
+        duration: 6000,
+      })
+      setShowResendOption(false)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to resend confirmation email'
+      toast.error("Failed to resend email", {
+        description: errorMessage,
+      })
+    } finally {
+      setIsResendingEmail(false)
     }
   }
 
@@ -82,6 +132,9 @@ export default function LoginPage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to sign in with Google'
       setError(errorMessage)
+      toast.error("Google login failed", {
+        description: errorMessage,
+      })
       setIsLoading(false)
     }
   }
@@ -117,6 +170,35 @@ export default function LoginPage() {
                 {error && (
                   <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                     {error}
+                    {showResendOption && (
+                      <div className="mt-3 pt-3 border-t border-destructive/20">
+                        <p className="text-xs text-destructive/80 mb-2">
+                          Didn't receive the confirmation email?
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleResendConfirmation}
+                            disabled={isResendingEmail}
+                            className="h-8 text-xs flex-1"
+                          >
+                            {isResendingEmail ? "Sending..." : "Resend confirmation email"}
+                          </Button>
+                          <Link href="/auth/resend-confirmation">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-xs"
+                            >
+                              Go to resend page
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="grid gap-6">
@@ -221,15 +303,17 @@ export default function LoginPage() {
                     <Typography variant="T_SemiBold_H6">Login with Google</Typography>
                   </Button>
                 </div>
-                <div className="text-center text-sm">
-                  <Typography variant="T_Regular_H6" className="inline">
-                    Don&apos;t have an account?{" "}
-                  </Typography>
-                  <a href="/auth/signup" className="underline underline-offset-4">
+                <div className="text-center text-sm space-y-2">
+                  <div>
                     <Typography variant="T_Regular_H6" className="inline">
-                      Sign up
+                      Don&apos;t have an account?{" "}
                     </Typography>
-                  </a>
+                    <a href="/auth/signup" className="underline underline-offset-4">
+                      <Typography variant="T_Regular_H6" className="inline">
+                        Sign up
+                      </Typography>
+                    </a>
+                  </div>
                 </div>
               </form>
             </Form>

@@ -12,6 +12,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  resendConfirmation: (email: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -50,8 +51,9 @@ export function useAuthState() {
     setLoading(true)
     try {
       await authService.signIn(email, password)
-    } finally {
+    } catch (error) {
       setLoading(false)
+      throw error
     }
   }
 
@@ -86,6 +88,10 @@ export function useAuthState() {
     await authService.resetPassword(email)
   }
 
+  const resendConfirmation = async (email: string) => {
+    await authService.resendConfirmation(email)
+  }
+
   return {
     user,
     loading,
@@ -93,7 +99,8 @@ export function useAuthState() {
     signUp,
     signInWithGoogle,
     signOut,
-    resetPassword
+    resetPassword,
+    resendConfirmation
   }
 }
 

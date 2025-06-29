@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "PaySlip Pro",
@@ -24,6 +25,12 @@ export default function RootLayout({
         >
           <AuthProvider>
             {children}
+            <Toaster 
+              richColors 
+              position="top-center"
+              expand={false}
+              duration={4000}
+            />
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { Button, Input, Label, Typography } from '@/components/ui'
 import { GalleryVerticalEnd } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function CallbackPage() {
   const router = useRouter()
@@ -69,12 +70,18 @@ export default function CallbackPage() {
 
       if (adminError) throw adminError
 
-      // Redirect to dashboard
+      // Success - redirect to dashboard
+      toast.success("Organization created!", {
+        description: "Welcome to PaySlip Pro. Your organization has been set up successfully.",
+      })
       router.push('/dashboard')
       router.refresh()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create organization'
       setError(errorMessage)
+      toast.error("Failed to create organization", {
+        description: errorMessage,
+      })
       setIsLoading(false)
     }
   }

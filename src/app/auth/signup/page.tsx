@@ -6,6 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import Image from "next/image"
+import { supabase } from "@/lib/supabase"
+import { toast } from "sonner"
 
 // ** import icons
 import { GalleryVerticalEnd, Eye, EyeOff } from "lucide-react"
@@ -75,10 +77,34 @@ export default function SignupPage() {
     
     try {
       await signUp(values.email, values.password, values.organization)
-      router.push('/dashboard')
+      
+      // Check if email confirmation is required
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        // Email confirmation required - show success message
+        toast.success("Account created successfully!", {
+          description: "Please check your email to confirm your account before logging in.",
+          duration: 6000,
+        })
+        
+        // Redirect to login page after a short delay
+        setTimeout(() => {
+          router.push('/auth/login')
+        }, 1500)
+      } else {
+        // Email confirmation not required - proceed to dashboard
+        toast.success("Welcome to PaySlip Pro!", {
+          description: "Your account has been created successfully.",
+        })
+        router.push('/dashboard')
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create account'
       setError(errorMessage)
+      toast.error("Signup failed", {
+        description: errorMessage,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -94,6 +120,9 @@ export default function SignupPage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to sign up with Google'
       setError(errorMessage)
+      toast.error("Google signup failed", {
+        description: errorMessage,
+      })
       setIsLoading(false)
     }
   }
@@ -281,15 +310,27 @@ export default function SignupPage() {
                     <Typography variant="T_SemiBold_H6">Sign up with Google</Typography>
                   </Button>
                 </div>
-                <div className="text-center text-sm">
-                  <Typography variant="T_Regular_H6" className="inline">
-                    Already have an account?{" "}
-                  </Typography>
-                  <a href="/auth/login" className="underline underline-offset-4">
+                <div className="text-center text-sm space-y-2">
+                  <div>
                     <Typography variant="T_Regular_H6" className="inline">
-                      Sign in
+                      Already have an account?{" "}
                     </Typography>
-                  </a>
+                    <a href="/auth/login" className="underline underline-offset-4">
+                      <Typography variant="T_Regular_H6" className="inline">
+                        Sign in
+                      </Typography>
+                    </a>
+                  </div>
+                  <div>
+                    <Typography variant="T_Regular_H6" className="inline text-muted-foreground">
+                      Need to resend confirmation email?{" "}
+                    </Typography>
+                    <a href="/auth/login" className="underline underline-offset-4">
+                      <Typography variant="T_Regular_H6" className="inline">
+                        Go to login
+                      </Typography>
+                    </a>
+                  </div>
                 </div>
               </form>
             </Form>
