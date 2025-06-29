@@ -1,0 +1,533 @@
+"use client"
+
+import React, { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import Image from "next/image"
+import Link from "next/link"
+import { toast } from "sonner"
+
+// ** import icons
+import { GalleryVerticalEnd, Eye, EyeOff, ArrowLeft } from "lucide-react"
+
+// ** import shared components
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import Typography from "@/components/ui/typography"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+
+// ** import hooks
+import { useAuth } from "@/hooks/useAuth"
+
+// ** Form schema with password strength requirements
+const resetPasswordSchema = z.object({
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 
+      "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+})
+
+type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>
+
+function ResetPasswordPageContent() {
+  // Constants
+  const APP_NAME = "PaySlip Pro"
+  
+  // Hooks
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { updatePassword } = useAuth()
+  
+  // Local State
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
+  
+  // Form
+  const form = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  })
+
+  // Check if we have valid reset token on mount
+  useEffect(() => {
+    const checkToken = () => {
+      // Check for verification flag and required parameters
+      const verified = searchParams.get('verified')
+      const tokenHash = searchParams.get('token_hash')
+      const token = searchParams.get('token')
+      const code = searchParams.get('code')
+      const type = searchParams.get('type')
+      
+      // We need verification flag and one token parameter
+      const hasValidParams = verified === 'true' && (tokenHash || token || code) && type === 'recovery'
+      
+      if (!hasValidParams) {
+        setError('Invalid or expired reset link. Please request a new password reset.')
+        setIsValidToken(false)
+      } else {
+        setIsValidToken(true)
+      }
+    }
+
+    checkToken()
+  }, [searchParams])
+  
+  // Event Handlers
+  const onSubmit = async (values: ResetPasswordFormValues) => {
+    if (!isValidToken) return
+    
+    setError(null)
+    setIsLoading(true)
+    
+    try {
+      console.log('Starting password update process...')
+      
+      // Establish authenticated session with the reset token
+      const code = searchParams.get('code')
+      const token = searchParams.get('token') 
+      const tokenHash = searchParams.get('token_hash')
+      
+      console.log('Token parameters:', { code: !!code, token: !!token, tokenHash: !!tokenHash })
+      
+      if (code || token || tokenHash) {
+        console.log('Establishing authenticated session...')
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        
+        // Establish session using the reset token
+        let sessionResult
+        try {
+          if (tokenHash) {
+            console.log('Using verifyOtp with token_hash')
+            sessionResult = await supabase.auth.verifyOtp({
+              type: 'recovery',
+              token_hash: tokenHash,
+            })
+          } else if (code) {
+            console.log('Using verifyOtp with code as token_hash')
+            sessionResult = await supabase.auth.verifyOtp({
+              type: 'recovery',
+              token_hash: code,
+            })
+          } else if (token) {
+            console.log('Using verifyOtp with token as token_hash')
+            sessionResult = await supabase.auth.verifyOtp({
+              type: 'recovery',
+              token_hash: token,
+            })
+          }
+          
+          console.log('Session establishment result:', sessionResult)
+          
+          if (sessionResult?.error) {
+            console.error('Session establishment failed:', sessionResult.error)
+            throw new Error('Password reset token has expired or is invalid. Please request a new reset link.')
+          }
+          
+          console.log('Session established successfully')
+        } catch (sessionError) {
+          console.error('Session establishment error:', sessionError)
+          throw new Error('Failed to establish reset session. Please request a new reset link.')
+        }
+      }
+      
+      // Update the password
+      console.log('Updating password...')
+      await updatePassword(values.password)
+      console.log('Password updated successfully')
+      
+      setIsSuccess(true)
+      toast.success("Password updated successfully!", {
+        description: "Your password has been reset. You can now log in with your new password.",
+        duration: 6000,
+      })
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        router.push('/auth/login')
+      }, 2000)
+    } catch (err) {
+      console.error('Password update error:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update password'
+      setError(errorMessage)
+      toast.error("Failed to update password", {
+        description: errorMessage,
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
+    if (field === 'password') {
+      setShowPassword(!showPassword)
+    } else {
+      setShowConfirmPassword(!showConfirmPassword)
+    }
+  }
+
+  const getPasswordStrengthInfo = () => {
+    const password = form.watch("password")
+    const checks = [
+      { test: password.length >= 8, text: "At least 8 characters" },
+      { test: /[a-z]/.test(password), text: "One lowercase letter" },
+      { test: /[A-Z]/.test(password), text: "One uppercase letter" },
+      { test: /\d/.test(password), text: "One number" },
+    ]
+    
+    return checks
+  }
+
+  // Loading state while checking token
+  if (isValidToken === null) {
+    return (
+      <div className="grid min-h-svh lg:grid-cols-2">
+        <div className="flex flex-col gap-4 p-6 md:p-10">
+          <div className="flex justify-center gap-2 md:justify-start">
+            <a href="#" className="flex items-center gap-2 font-medium">
+              <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+                <GalleryVerticalEnd className="size-4" />
+              </div>
+              <Typography variant="T_SemiBold_H6">{APP_NAME}</Typography>
+            </a>
+          </div>
+          <div className="flex flex-1 items-center justify-center">
+            <div className="w-full max-w-xs">
+              <div className="flex flex-col items-center gap-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <Typography variant="T_Regular_H6" className="text-muted-foreground">
+                  Verifying reset link...
+                </Typography>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-muted relative hidden lg:block">
+          <Image
+            src="/placeholder.svg"
+            alt="Reset password illustration"
+            fill
+            className="object-cover dark:brightness-[0.2] dark:grayscale"
+            priority
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Success state
+  if (isSuccess) {
+    return (
+      <div className="grid min-h-svh lg:grid-cols-2">
+        <div className="flex flex-col gap-4 p-6 md:p-10">
+          <div className="flex justify-center gap-2 md:justify-start">
+            <a href="#" className="flex items-center gap-2 font-medium">
+              <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+                <GalleryVerticalEnd className="size-4" />
+              </div>
+              <Typography variant="T_SemiBold_H6">{APP_NAME}</Typography>
+            </a>
+          </div>
+          <div className="flex flex-1 items-center justify-center">
+            <div className="w-full max-w-xs">
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20">
+                    <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <Typography variant="T_Bold_H3">Password updated!</Typography>
+                  <Typography 
+                    variant="T_Regular_H6" 
+                    className="text-muted-foreground text-balance"
+                  >
+                    Your password has been successfully updated. You will be redirected to the login page shortly.
+                  </Typography>
+                </div>
+                
+                <Link href="/auth/login">
+                  <Button className="w-full">
+                    <Typography variant="T_SemiBold_H6">
+                      Continue to Login
+                    </Typography>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-muted relative hidden lg:block">
+          <Image
+            src="/placeholder.svg"
+            alt="Password reset success illustration"
+            fill
+            className="object-cover dark:brightness-[0.2] dark:grayscale"
+            priority
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Invalid token state
+  if (!isValidToken) {
+    return (
+      <div className="grid min-h-svh lg:grid-cols-2">
+        <div className="flex flex-col gap-4 p-6 md:p-10">
+          <div className="flex justify-center gap-2 md:justify-start">
+            <a href="#" className="flex items-center gap-2 font-medium">
+              <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+                <GalleryVerticalEnd className="size-4" />
+              </div>
+              <Typography variant="T_SemiBold_H6">{APP_NAME}</Typography>
+            </a>
+          </div>
+          <div className="flex flex-1 items-center justify-center">
+            <div className="w-full max-w-xs">
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                    <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <Typography variant="T_Bold_H3">Invalid reset link</Typography>
+                  <Typography 
+                    variant="T_Regular_H6" 
+                    className="text-muted-foreground text-balance"
+                  >
+                    This password reset link is invalid or has expired. Please request a new one.
+                  </Typography>
+                </div>
+                
+                {error && (
+                  <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3">
+                  <Link href="/auth/forgot-password">
+                    <Button className="w-full">
+                      <Typography variant="T_SemiBold_H6">
+                        Request new reset link
+                      </Typography>
+                    </Button>
+                  </Link>
+                  
+                  <Link href="/auth/login">
+                    <Button variant="ghost" className="w-full">
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      <Typography variant="T_SemiBold_H6">
+                        Back to login
+                      </Typography>
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-muted relative hidden lg:block">
+          <Image
+            src="/placeholder.svg"
+            alt="Invalid reset link illustration"
+            fill
+            className="object-cover dark:brightness-[0.2] dark:grayscale"
+            priority
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Main reset password form
+  return (
+    <div className="grid min-h-svh lg:grid-cols-2">
+      <div className="flex flex-col gap-4 p-6 md:p-10">
+        <div className="flex justify-center gap-2 md:justify-start">
+          <a href="#" className="flex items-center gap-2 font-medium">
+            <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+              <GalleryVerticalEnd className="size-4" />
+            </div>
+            <Typography variant="T_SemiBold_H6">{APP_NAME}</Typography>
+          </a>
+        </div>
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-xs">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <Typography variant="T_Bold_H3">Set new password</Typography>
+                  <Typography 
+                    variant="T_Regular_H6" 
+                    className="text-muted-foreground text-balance"
+                  >
+                    Create a strong password for your account
+                  </Typography>
+                </div>
+                
+                {error && (
+                  <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
+                  </div>
+                )}
+                
+                <div className="grid gap-4">
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>New Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              type={showPassword ? "text" : "password"} 
+                              className="pr-10"
+                              disabled={isLoading}
+                              placeholder="Enter new password"
+                              {...field} 
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => togglePasswordVisibility('password')}
+                              aria-label={showPassword ? "Hide password" : "Show password"}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Password strength indicator */}
+                  {form.watch("password") && (
+                    <div className="space-y-2">
+                      <Typography variant="T_Regular_H6" className="text-sm text-muted-foreground">
+                        Password requirements:
+                      </Typography>
+                      <div className="space-y-1">
+                        {getPasswordStrengthInfo().map((check, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${check.test ? 'bg-green-500' : 'bg-gray-300'}`} />
+                            <Typography 
+                              variant="T_Regular_H6" 
+                              className={`text-xs ${check.test ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+                            >
+                              {check.text}
+                            </Typography>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              type={showConfirmPassword ? "text" : "password"} 
+                              className="pr-10"
+                              disabled={isLoading}
+                              placeholder="Confirm new password"
+                              {...field} 
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => togglePasswordVisibility('confirmPassword')}
+                              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                            >
+                              {showConfirmPassword ? (
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    <Typography variant="T_SemiBold_H6">
+                      {isLoading ? "Updating..." : "Update password"}
+                    </Typography>
+                  </Button>
+                </div>
+                
+                <div className="text-center">
+                  <Link href="/auth/login">
+                    <Button variant="ghost" className="w-full">
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      <Typography variant="T_SemiBold_H6">
+                        Back to login
+                      </Typography>
+                    </Button>
+                  </Link>
+                </div>
+              </form>
+            </Form>
+          </div>
+        </div>
+      </div>
+      <div className="bg-muted relative hidden lg:block">
+        <Image
+          src="/placeholder.svg"
+          alt="Reset password illustration"
+          fill
+          className="object-cover dark:brightness-[0.2] dark:grayscale"
+          priority
+        />
+      </div>
+    </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordPageContent />
+    </Suspense>
+  )
+} 

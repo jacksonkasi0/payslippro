@@ -66,7 +66,6 @@ interface DataTableToolbarProps<TData> {
   entityName?: string;
   columnMapping?: Record<string, string>;
   columnWidths?: Array<{ wch: number }>;
-  headers?: string[];
   customToolbarComponent?: React.ReactNode;
 }
 
@@ -84,7 +83,6 @@ export function DataTableToolbar<TData>({
   entityName = "items",
   columnMapping,
   columnWidths,
-  headers,
   customToolbarComponent,
 }: DataTableToolbarProps<TData>) {
   // Get router and pathname for URL state reset
@@ -400,7 +398,6 @@ export function DataTableToolbar<TData>({
             entityName={entityName}
             columnMapping={columnMapping}
             columnWidths={columnWidths}
-            headers={headers}
             size={config.size}
           />
         )}

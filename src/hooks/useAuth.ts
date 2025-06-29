@@ -12,6 +12,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  updatePassword: (password: string) => Promise<void>
   resendConfirmation: (email: string) => Promise<void>
 }
 
@@ -88,6 +89,10 @@ export function useAuthState() {
     await authService.resetPassword(email)
   }
 
+  const updatePassword = async (password: string) => {
+    await authService.updatePassword(password)
+  }
+
   const resendConfirmation = async (email: string) => {
     await authService.resendConfirmation(email)
   }
@@ -100,6 +105,7 @@ export function useAuthState() {
     signInWithGoogle,
     signOut,
     resetPassword,
+    updatePassword,
     resendConfirmation
   }
 }

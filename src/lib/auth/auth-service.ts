@@ -101,11 +101,16 @@ export const authService = {
     if (orgError) throw orgError
 
     // Create admin user profile
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    if (!currentUser?.email) {
+      throw new Error('User email not available')
+    }
+    
     const { error: adminError } = await supabase
       .from('admin_users')
       .insert({
         id: userId,
-        email: (await supabase.auth.getUser()).data.user?.email!,
+        email: currentUser.email,
         role: 'admin',
         organization_id: organization.id
       })
@@ -146,11 +151,15 @@ export const authService = {
       if (orgError) throw orgError
 
       // Create admin user profile
+      if (!user?.email) {
+        throw new Error('User email not available')
+      }
+      
       const { error: adminError } = await supabase
         .from('admin_users')
         .insert({
           id: userId,
-          email: user?.email!,
+          email: user.email,
           role: 'admin',
           organization_id: organization.id
         })
@@ -268,24 +277,54 @@ export const authService = {
 
   /**
    * Reset password
+   * Security: Rate limited by Supabase to prevent abuse
+   * Uses custom redirect to prevent email prefetching issues
    */
   async resetPassword(email: string): Promise<void> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: `${window.location.origin}/auth/confirm`,
     })
     
-    if (error) throw error
+    if (error) {
+      // Handle specific error cases without exposing sensitive information
+      if (error.message.includes('rate limit')) {
+        throw new Error('Too many reset attempts. Please wait before trying again.')
+      } else if (error.message.includes('not found')) {
+        // For security, don't reveal if email exists or not
+        throw new Error('If an account with this email exists, you will receive a reset link.')
+      } else {
+        throw error
+      }
+    }
   },
 
   /**
    * Update password
+   * Security: Must be called within an authenticated session from password reset flow
    */
   async updatePassword(password: string): Promise<void> {
+    // Validate password strength on client side as well
+    if (password.length < 8) {
+      throw new Error('Password must be at least 8 characters long.')
+    }
+    
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number.')
+    }
+
     const { error } = await supabase.auth.updateUser({
       password
     })
     
-    if (error) throw error
+    if (error) {
+      if (error.message.includes('session')) {
+        throw new Error('Password reset session has expired. Please request a new reset link.')
+      } else if (error.message.includes('weak')) {
+        throw new Error('Password is too weak. Please choose a stronger password.')
+      } else {
+        throw error
+      }
+    }
   },
 
   /**

@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState } from "react"
-import { useRouter } from "next/navigation"
+import React, { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -36,12 +36,13 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 
-export default function LoginPage() {
+function LoginPageContent() {
   // Constants
   const APP_NAME = "PaySlip Pro"
   
   // Hooks
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { signIn, signInWithGoogle, resendConfirmation } = useAuth()
   
   // Local State
@@ -60,6 +61,38 @@ export default function LoginPage() {
       password: "",
     },
   })
+
+  // Handle URL error parameters
+  useEffect(() => {
+    const urlError = searchParams.get('error')
+    if (urlError) {
+      let errorMessage = ''
+      let description = ''
+      
+      switch (urlError) {
+        case 'confirmation_failed':
+          errorMessage = 'Email confirmation failed'
+          description = 'The confirmation link is invalid or has expired. Please try signing up again.'
+          break
+        case 'reset_failed':
+          errorMessage = 'Password reset failed'
+          description = 'The password reset link is invalid or has expired. Please request a new one.'
+          break
+        default:
+          errorMessage = 'Authentication error'
+          description = 'An error occurred during authentication. Please try again.'
+      }
+      
+      setError(errorMessage)
+      toast.error(errorMessage, {
+        description,
+        duration: 6000,
+      })
+      
+      // Clear the URL parameter
+      router.replace('/auth/login', undefined)
+    }
+  }, [searchParams, router])
   
   // Event Handlers
   const onSubmit = async (values: LoginFormValues) => {
@@ -171,7 +204,7 @@ export default function LoginPage() {
                     {showResendOption && (
                       <div className="mt-3 pt-3 border-t border-destructive/20">
                         <p className="text-xs text-destructive/80 mb-2">
-                          Didn't receive the confirmation email?
+                          Didn&apos;t receive the confirmation email?
                         </p>
                         <Button
                           type="button"
@@ -213,12 +246,12 @@ export default function LoginPage() {
                       <FormItem>
                         <div className="flex items-center">
                           <FormLabel>Password</FormLabel>
-                          <a
-                            href="#"
+                          <Link
+                            href="/auth/forgot-password"
                             className="ml-auto text-sm underline-offset-4 hover:underline"
                           >
                             Forgot your password?
-                          </a>
+                          </Link>
                         </div>
                         <FormControl>
                           <div className="relative">
@@ -316,5 +349,13 @@ export default function LoginPage() {
         />
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginPageContent />
+    </Suspense>
   )
 }

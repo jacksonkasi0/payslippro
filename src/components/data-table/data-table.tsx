@@ -96,7 +96,6 @@ interface DataTableProps<TData, TValue> {
     entityName: string;
     columnMapping: Record<string, string>;
     columnWidths: Array<{ wch: number }>;
-    headers: string[];
   };
 
   // ID field in TData for tracking selected items
@@ -568,7 +567,7 @@ export function DataTable<TData, TValue>({
 
   // Initialize default column sizes when columns are available and no saved sizes exist
   useEffect(() => {
-    initializeColumnSizes(columns, tableId, setColumnSizing);
+    initializeColumnSizes(columns as ColumnDef<TData, unknown>[], tableId, setColumnSizing);
   }, [columns, tableId, setColumnSizing]);
 
   // Handle column resizing
@@ -657,7 +656,6 @@ export function DataTable<TData, TValue>({
           entityName={exportConfig.entityName}
           columnMapping={exportConfig.columnMapping}
           columnWidths={exportConfig.columnWidths}
-          headers={exportConfig.headers}
           customToolbarComponent={renderToolbarContent?.({
             selectedRows: dataItems.filter((item) => selectedItemIds[String(item[idField])]),
             allSelectedIds: Object.keys(selectedItemIds),
