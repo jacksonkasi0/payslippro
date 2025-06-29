@@ -1,8 +1,11 @@
 // ** import supabase client
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
 
 // ** import types
 import type { AuthUser } from '@/lib/types'
+
+// Create a single instance to use throughout the auth service
+const supabase = createClient()
 
 /**
  * Authentication service for managing user authentication
@@ -130,14 +133,9 @@ export const authService = {
 
     // Get user metadata to check for pending organization
     const { data: { user } } = await supabase.auth.getUser()
-    const organizationName = user?.user_metadata?.organization_name
+    const organizationName = user?.user_metadata?.organization_name || 'My Organization'
     
-    if (!organizationName) {
-      // No pending organization
-      return null
-    }
-
-    // Create the organization
+    // Create the organization (either from metadata or default)
     try {
       const { data: organization, error: orgError } = await supabase
         .from('organizations')
@@ -159,10 +157,12 @@ export const authService = {
       
       if (adminError) throw adminError
 
-      // Clear the organization name from metadata
-      await supabase.auth.updateUser({
-        data: { organization_name: null }
-      })
+      // Clear the organization name from metadata if it existed
+      if (user?.user_metadata?.organization_name) {
+        await supabase.auth.updateUser({
+          data: { organization_name: null }
+        })
+      }
 
       return organization
     } catch (error) {

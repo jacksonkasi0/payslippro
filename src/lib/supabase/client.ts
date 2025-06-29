@@ -1,7 +1,12 @@
-import { createClient } from '@supabase/supabase-js'
-
-// ** import config
+import { createBrowserClient } from '@supabase/ssr'
 import { env } from '@/config/env'
 
-// ** Create and export Supabase client
-export const supabase = createClient(env.supabase.url, env.supabase.anonKey) 
+export function createClient() {
+  return createBrowserClient(
+    env.supabase.url,
+    env.supabase.anonKey
+  )
+}
+
+// Keep the old export for backward compatibility
+export const supabase = createClient() 
