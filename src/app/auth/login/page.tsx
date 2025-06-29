@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import Image from "next/image"
 
 // ** import icons
 import { GalleryVerticalEnd, Eye, EyeOff } from "lucide-react"
@@ -63,8 +64,9 @@ export default function LoginPage() {
     try {
       await signIn(values.email, values.password)
       router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message || 'Invalid email or password')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid email or password'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -77,8 +79,9 @@ export default function LoginPage() {
     try {
       await signInWithGoogle()
       // Google OAuth will handle the redirect
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to sign in with Google'
+      setError(errorMessage)
       setIsLoading(false)
     }
   }
@@ -234,10 +237,12 @@ export default function LoginPage() {
         </div>
       </div>
       <div className="bg-muted relative hidden lg:block">
-        <img
+        <Image
           src="/placeholder.svg"
           alt="Login illustration"
-          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+          fill
+          className="object-cover dark:brightness-[0.2] dark:grayscale"
+          priority
         />
       </div>
     </div>

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { organizationService } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { Button, Input, Label, Typography } from '@/components/ui'
 import { GalleryVerticalEnd } from 'lucide-react'
@@ -17,25 +16,25 @@ export default function CallbackPage() {
   const [needsOrganization, setNeedsOrganization] = useState(false)
 
   useEffect(() => {
-    checkUserOrganization()
-  }, [user])
+    const checkUserOrganization = async () => {
+      if (!user) {
+        setIsLoading(false)
+        return
+      }
 
-  const checkUserOrganization = async () => {
-    if (!user) {
+      // Check if user already has an organization
+      if (user.adminProfile?.organization_id) {
+        router.push('/dashboard')
+        return
+      }
+
+      // User needs to create/join an organization
+      setNeedsOrganization(true)
       setIsLoading(false)
-      return
     }
 
-    // Check if user already has an organization
-    if (user.adminProfile?.organization_id) {
-      router.push('/dashboard')
-      return
-    }
-
-    // User needs to create/join an organization
-    setNeedsOrganization(true)
-    setIsLoading(false)
-  }
+    checkUserOrganization()
+  }, [user, router])
 
   const handleCreateOrganization = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,8 +72,9 @@ export default function CallbackPage() {
       // Redirect to dashboard
       router.push('/dashboard')
       router.refresh()
-    } catch (err: any) {
-      setError(err.message || 'Failed to create organization')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create organization'
+      setError(errorMessage)
       setIsLoading(false)
     }
   }

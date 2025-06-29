@@ -57,7 +57,7 @@ export default function DashboardPage() {
               Dashboard
             </h2>
             <p className="text-muted-foreground">
-              Manage your organization's payroll and employee data
+              Manage your organization&apos;s payroll and employee data
             </p>
           </div>
 
@@ -99,7 +99,7 @@ export default function DashboardPage() {
                 Manage Employees
               </h3>
               <p className="text-muted-foreground mb-4">
-                Add, edit, and manage your organization's employees
+                Add, edit, and manage your organization&apos;s employees
               </p>
               <Button className="w-full">
                 View Employees

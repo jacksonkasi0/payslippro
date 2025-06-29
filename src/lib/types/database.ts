@@ -68,7 +68,7 @@ export interface PayslipEarnings {
   allowances?: Record<string, number>
   overtime?: number
   bonus?: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface PayslipDeductions {
@@ -76,7 +76,7 @@ export interface PayslipDeductions {
   pf?: number
   insurance?: number
   loan?: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface Payslip {

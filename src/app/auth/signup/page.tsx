@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import Image from "next/image"
 
 // ** import icons
 import { GalleryVerticalEnd, Eye, EyeOff } from "lucide-react"
@@ -75,8 +76,9 @@ export default function SignupPage() {
     try {
       await signUp(values.email, values.password, values.organization)
       router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message || 'Failed to create account')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create account'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -89,8 +91,9 @@ export default function SignupPage() {
     try {
       await signInWithGoogle()
       // Google OAuth will handle the redirect
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign up with Google')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to sign up with Google'
+      setError(errorMessage)
       setIsLoading(false)
     }
   }
@@ -294,10 +297,12 @@ export default function SignupPage() {
         </div>
       </div>
       <div className="bg-muted relative hidden lg:block">
-        <img
+        <Image
           src="/placeholder.svg"
           alt="Signup illustration"
-          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+          fill
+          className="object-cover dark:brightness-[0.2] dark:grayscale"
+          priority
         />
       </div>
     </div>

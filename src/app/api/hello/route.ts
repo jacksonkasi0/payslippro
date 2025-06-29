@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 // GET method handler
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     return NextResponse.json(
       {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         message: "Internal Server Error",
