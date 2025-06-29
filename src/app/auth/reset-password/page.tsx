@@ -74,7 +74,7 @@ function ResetPasswordPageContent() {
   // Check if we have valid reset token on mount
   useEffect(() => {
     const checkToken = () => {
-      // Check for verification flag and required token_hash parameter
+      // Check for verification flag and required token parameter
       const verified = searchParams.get('verified')
       const tokenHash = searchParams.get('token_hash')
       const type = searchParams.get('type')
@@ -83,11 +83,11 @@ function ResetPasswordPageContent() {
         verified,
         hasTokenHash: !!tokenHash,
         type,
+        tokenHashPreview: tokenHash ? `${tokenHash.substring(0, 8)}...` : 'none',
         timestamp: new Date().toISOString()
       })
       
-      // For password reset, we strictly require verification flag, token_hash, and recovery type
-      // Supabase's verifyOtp for recovery type specifically expects token_hash parameter
+      // For password reset, we require verification flag, token_hash, and recovery type
       const hasValidParams = verified === 'true' && tokenHash && type === 'recovery'
       
       if (!hasValidParams) {
@@ -120,7 +120,7 @@ function ResetPasswordPageContent() {
         timestamp: new Date().toISOString()
       })
       
-      // Establish authenticated session with the reset token
+      // Get the token from URL parameters
       const tokenHash = searchParams.get('token_hash')
       
       console.log('Token parameters for session establishment:', { 
@@ -129,65 +129,64 @@ function ResetPasswordPageContent() {
         timestamp: new Date().toISOString()
       })
       
-      // Strictly require token_hash for password reset flow
+      // Require token_hash for password reset flow
       if (!tokenHash) {
         throw new Error('Invalid reset token format. Please request a new password reset link.')
       }
       
-      if (tokenHash) {
-        console.log('Establishing authenticated session...')
-        const { createClient } = await import('@/lib/supabase/client')
-        const supabase = createClient()
+      // Establish authenticated session with the reset token
+      console.log('Establishing authenticated session...')
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      // Establish session using the reset token
+      try {
+        console.log('Using verifyOtp with token_hash for password recovery', {
+          tokenHashPreview: `${tokenHash.substring(0, 8)}...`,
+          timestamp: new Date().toISOString()
+        })
         
-        // Establish session using the reset token
-        try {
-          console.log('Using verifyOtp with token_hash for password recovery', {
-            tokenHashPreview: `${tokenHash.substring(0, 8)}...`,
-            timestamp: new Date().toISOString()
-          })
+        const sessionResult = await supabase.auth.verifyOtp({
+          type: 'recovery',
+          token_hash: tokenHash,
+        })
+        
+        console.log('Session establishment result:', {
+          hasError: !!sessionResult?.error,
+          errorCode: sessionResult?.error?.message,
+          hasSession: !!sessionResult?.data?.session,
+          hasUser: !!sessionResult?.data?.user,
+          timestamp: new Date().toISOString()
+        })
+        
+        if (sessionResult?.error) {
+          console.error('Session establishment failed:', sessionResult.error)
           
-          const sessionResult = await supabase.auth.verifyOtp({
-            type: 'recovery',
-            token_hash: tokenHash,
-          })
+          // Check for specific error types
+          const errorMessage = sessionResult.error.message.toLowerCase()
           
-          console.log('Session establishment result:', {
-            hasError: !!sessionResult?.error,
-            errorCode: sessionResult?.error?.message,
-            hasSession: !!sessionResult?.data?.session,
-            hasUser: !!sessionResult?.data?.user,
-            timestamp: new Date().toISOString()
-          })
-          
-          if (sessionResult?.error) {
-            console.error('Session establishment failed:', sessionResult.error)
-            
-            // Check for specific error types
-            const errorMessage = sessionResult.error.message.toLowerCase()
-            
-            if (errorMessage.includes('expired') || sessionResult.error.message.includes('otp_expired')) {
-              console.log('Token expired error detected')
-              setTokenExpired(true)
-              throw new Error('Password reset token has expired. Please request a new reset link.')
-            } else if (errorMessage.includes('invalid') || errorMessage.includes('not found')) {
-              throw new Error('Password reset token is invalid. Please request a new reset link.')
-            } else {
-              throw new Error('Password reset session could not be established. Please request a new reset link.')
-            }
+          if (errorMessage.includes('expired') || sessionResult.error.message.includes('otp_expired')) {
+            console.log('Token expired error detected')
+            setTokenExpired(true)
+            throw new Error('Password reset token has expired. Please request a new reset link.')
+          } else if (errorMessage.includes('invalid') || errorMessage.includes('not found')) {
+            throw new Error('Password reset token is invalid. Please request a new reset link.')
+          } else {
+            throw new Error('Password reset session could not be established. Please request a new reset link.')
           }
-          
-          console.log('Session established successfully')
-        } catch (sessionError) {
-          console.error('Session establishment error:', sessionError)
-          
-          // If it's already our custom error, re-throw it
-          if (sessionError instanceof Error && sessionError.message.includes('Password reset')) {
-            throw sessionError
-          }
-          
-          // Otherwise, provide a generic error message
-          throw new Error('Failed to establish password reset session. Please request a new reset link.')
         }
+        
+        console.log('Session established successfully')
+      } catch (sessionError) {
+        console.error('Session establishment error:', sessionError)
+        
+        // If it's already our custom error, re-throw it
+        if (sessionError instanceof Error && sessionError.message.includes('Password reset')) {
+          throw sessionError
+        }
+        
+        // Otherwise, provide a generic error message
+        throw new Error('Failed to establish password reset session. Please request a new reset link.')
       }
       
       // Update the password

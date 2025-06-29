@@ -27,43 +27,81 @@ function ConfirmResetPageContent() {
   // Local State
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [tokenParams, setTokenParams] = useState<{ token?: string; token_hash?: string; code?: string; type?: string } | null>(null)
+  const [tokenParams, setTokenParams] = useState<{ 
+    token?: string; 
+    token_hash?: string; 
+    code?: string; 
+    type?: string 
+  } | null>(null)
   
   // Extract token parameters on mount
   useEffect(() => {
     const token = searchParams.get('token') || undefined
     const token_hash = searchParams.get('token_hash') || undefined
     const code = searchParams.get('code') || undefined
-    const type = searchParams.get('type') || undefined
+    const type = searchParams.get('type') || 'recovery' // Default to recovery if not specified
     
-    if (type === 'recovery' && (token || token_hash || code)) {
+    console.log('Confirm reset page - extracted parameters:', {
+      token: token ? 'present' : 'missing',
+      token_hash: token_hash ? 'present' : 'missing', 
+      code: code ? 'present' : 'missing',
+      type,
+      timestamp: new Date().toISOString()
+    })
+    
+    // Check if we have any valid token parameter
+    if (token || token_hash || code) {
       setTokenParams({ token, token_hash, code, type })
+      console.log('Valid token parameters found')
     } else {
+      console.warn('No valid token parameters found')
       setError('Invalid password reset link. Please request a new one.')
     }
   }, [searchParams])
 
   const handleConfirmReset = async () => {
-    if (!tokenParams) return
+    if (!tokenParams) {
+      console.error('No token parameters available')
+      return
+    }
     
     setError(null)
     setIsLoading(true)
     
     try {
-      // For password reset flows, we'll skip verification here and let it happen
-      // when the user actually tries to update their password
-      // This prevents issues with different token formats and verification methods
+      console.log('Starting confirmation process with parameters:', {
+        hasToken: !!tokenParams.token,
+        hasTokenHash: !!tokenParams.token_hash,
+        hasCode: !!tokenParams.code,
+        type: tokenParams.type,
+        timestamp: new Date().toISOString()
+      })
       
       // Add a small delay to show the user something is happening
       await new Promise(resolve => setTimeout(resolve, 500))
       
       // Success - redirect to reset password page with the token
       const params = new URLSearchParams()
-      if (tokenParams.token_hash) params.set('token_hash', tokenParams.token_hash)
-      if (tokenParams.token) params.set('token', tokenParams.token)
-      if (tokenParams.code) params.set('code', tokenParams.code)
-      params.set('type', 'recovery')
+      
+      // Use whichever token parameter we have, prioritizing token_hash, then code, then token
+      if (tokenParams.token_hash) {
+        params.set('token_hash', tokenParams.token_hash)
+        console.log('Using token_hash parameter')
+      } else if (tokenParams.code) {
+        params.set('token_hash', tokenParams.code) // Pass code as token_hash
+        console.log('Using code parameter as token_hash')
+      } else if (tokenParams.token) {
+        params.set('token_hash', tokenParams.token) // Pass token as token_hash
+        console.log('Using token parameter as token_hash')
+      }
+      
+      params.set('type', tokenParams.type || 'recovery')
       params.set('verified', 'true')
+      
+      console.log('Redirecting to reset password page with params:', {
+        paramsString: params.toString(),
+        timestamp: new Date().toISOString()
+      })
       
       toast.success("Verification successful!", {
         description: "Redirecting to password reset form...",
@@ -72,7 +110,7 @@ function ConfirmResetPageContent() {
       router.push(`/auth/reset-password?${params.toString()}`)
       
     } catch (err) {
-      console.error('Unexpected error:', err)
+      console.error('Unexpected error during confirmation:', err)
       setError('Unable to process reset link. Please try requesting a new one.')
       toast.error("Verification failed", {
         description: "Please try requesting a new password reset link.",
@@ -164,4 +202,4 @@ export default function ConfirmResetPage() {
       <ConfirmResetPageContent />
     </Suspense>
   )
-} 
+}
