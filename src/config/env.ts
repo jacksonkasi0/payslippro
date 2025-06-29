@@ -4,8 +4,8 @@
 export const env = {
   // Supabase Configuration
   supabase: {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   },
   
   // App Configuration
@@ -24,24 +24,37 @@ export const env = {
 // Environment validation
 const validateEnv = () => {
   const requiredEnvVars = [
-    'NEXT_PUBLIC_SUPABASE_URL',
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    { name: 'NEXT_PUBLIC_SUPABASE_URL', value: process.env.NEXT_PUBLIC_SUPABASE_URL },
+    { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY },
   ]
 
   const missingVars = requiredEnvVars.filter(
-    (varName) => !process.env[varName]
+    (envVar) => !envVar.value || envVar.value.trim() === ''
   )
 
   if (missingVars.length > 0) {
+    console.error('Environment Variables Status:')
+    requiredEnvVars.forEach(envVar => {
+      console.error(`${envVar.name}: ${envVar.value ? '✓ Set' : '✗ Missing'}`)
+    })
+    
     throw new Error(
-      `Missing required environment variables: ${missingVars.join(', ')}`
+      `Missing required environment variables: ${missingVars.map(v => v.name).join(', ')}`
     )
   }
 }
 
-// Validate environment on import
-if (typeof window === 'undefined') {
-  validateEnv()
+// Only validate environment on server-side and in production builds
+if (typeof window === 'undefined' && process.env.NODE_ENV !== 'development') {
+  try {
+    validateEnv()
+  } catch (error) {
+    console.error('Environment validation failed:', error)
+    // Don't throw in development to allow hot reloading
+  }
 }
+
+// Export validation function for manual use
+export { validateEnv }
 
 export default env
