@@ -1,0 +1,158 @@
+## 🔄 Application End-to-End Flow (PayslipPro)
+
+---
+
+### 🧭 **1. Onboarding & Setup (Admin)**
+
+#### 1.1. Organization Setup
+
+* Admin signs up and creates an organization (name, logo, address).
+* Organization auto-generates default settings (departments, positions optional).
+
+#### 1.2. PDF Config Setup
+
+* Admin enters HTML2PDF.app API key under PDF settings.
+* This config is stored in `pdf_configs` and linked to `organization_id`.
+
+---
+
+### 👥 **2. Employee Management**
+
+#### 2.1. Add Employee (via Modal)
+
+* Admin adds employee with:
+
+  * Full name
+  * Email
+  * Department
+  * Position
+  * Status (`active`, `inactive`, `probation`)
+* Optional: Profile photo upload
+
+→ Record saved in `employees` with FK to `organization`, `department`, `position`.
+
+#### 2.2. Edit/Delete Employee
+
+* Admin edits employee info via same modal
+* Soft delete or complete delete (based on business rule)
+
+#### 2.3. Search/Filter Employee
+
+* Filter by name, department, position, employment status
+
+---
+
+### 📅 **3. Attendance Entry**
+
+#### 3.1. Add Attendance (via Calendar Icon in Row)
+
+* Admin clicks calendar icon in employee row
+* Month picker + inputs:
+
+  * Working days (auto-filled or manual)
+  * Leave days
+  * OT hours
+* Stored in `attendance` table
+* If record exists for that month: update; else: create
+
+---
+
+### 💰 **4. Payslip Generation**
+
+#### 4.1. Manual or Bulk Generation
+
+* Admin selects one/multiple employees
+* Opens payslip generator for selected month
+* Inputs:
+
+  * Earnings: base, allowances, custom fields
+  * Deductions: PF, PT, Tax, custom fields
+* System calculates:
+
+  * `net_pay = total_earnings - total_deductions`
+
+→ Record created in `payslips` table with:
+
+* Link to `employee_id`
+* Creator: `admin_user_id`
+* Month
+* JSON earnings + deductions
+* Generated timestamp
+* Status: `draft`
+
+#### 4.2. PDF Generation
+
+* On "Generate PDF":
+
+  * Uses stored API key from `pdf_configs`
+  * Sends payslip data to HTML2PDF.app
+  * Receives back `pdf_url`
+  * Updates `payslip.pdf_url` and marks `generated_at`
+
+---
+
+### 📤 **5. Sending Payslips (Email)**
+
+#### 5.1. Send to Employee
+
+* Admin selects employees or clicks "Send Payslip"
+* System:
+
+  * Validates `pdf_url` exists (generate if missing)
+  * Sends email via SMTP or mail service (future extension)
+  * Logs to `payslip_emails`:
+
+    * `status`: `sent`, `failed`, `pending`
+    * `smtp_config_id`: optional
+    * `error_message`: if any
+    * `sent_at`: timestamp
+
+---
+
+### ⚙️ **6. Admin Settings**
+
+#### 6.1. Department/Position Management
+
+* Admin can add/edit/delete departments & positions
+* Stored in `departments` / `positions` with `organization_id` for isolation
+
+#### 6.2. PDF / SMTP Config
+
+* Admin can manage:
+
+  * API key for PDF
+  * Optional future SMTP settings
+
+---
+
+## 🔒 Security / Multi-Tenant Logic
+
+* All records are filtered by `organization_id` from request context header
+* No `org_id` is passed in payload
+* Middleware extracts `org_id` and appends to all queries
+
+---
+
+## 🧠 Smart Features (Optional/Future Scope)
+
+* Attendance Prefill: Auto-fill working days/holidays
+* Earnings Template: Set default salary structure by role
+* Bulk Import: Employee CSV onboarding
+* Payslip Preview: Generate view before sending
+* Error Retry: Failed emails re-trigger logic
+* Audit Trail: Record actions per admin (future enhancement)
+
+---
+
+## ✅ Summary: Key Flows & Logic Points
+
+| Module     | Flow Highlights                                        |
+| ---------- | ------------------------------------------------------ |
+| Employee   | Add/Edit/Delete/Search, tie to org/dept/position       |
+| Attendance | Month-wise input, update-only UI                       |
+| Payslip    | Draft → PDF generation → Send via Email                |
+| Email      | One-click send with delivery tracking                  |
+| Settings   | Manage Departments, Positions, PDF Provider API key    |
+| Security   | Org-scoped, middleware-enforced multi-tenant structure |
+
+---
