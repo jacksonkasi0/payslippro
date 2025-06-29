@@ -72,10 +72,8 @@ export default function LoginPage() {
       toast.success("Welcome back!", {
         description: "Successfully logged in to PaySlip Pro.",
       })
-      // Add a small delay to ensure auth state is updated
-      setTimeout(() => {
-        router.replace('/dashboard')
-      }, 100)
+      // Use window.location.replace for immediate redirect
+      window.location.replace('/dashboard')
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Invalid email or password'
       setError(errorMessage)
@@ -175,28 +173,16 @@ export default function LoginPage() {
                         <p className="text-xs text-destructive/80 mb-2">
                           Didn't receive the confirmation email?
                         </p>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleResendConfirmation}
-                            disabled={isResendingEmail}
-                            className="h-8 text-xs flex-1"
-                          >
-                            {isResendingEmail ? "Sending..." : "Resend confirmation email"}
-                          </Button>
-                          <Link href="/auth/resend-confirmation">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-xs"
-                            >
-                              Go to resend page
-                            </Button>
-                          </Link>
-                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleResendConfirmation}
+                          disabled={isResendingEmail}
+                          className="h-8 text-xs w-full"
+                        >
+                          {isResendingEmail ? "Sending..." : "Resend confirmation email"}
+                        </Button>
                       </div>
                     )}
                   </div>
