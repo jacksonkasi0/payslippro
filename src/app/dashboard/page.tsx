@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ModeToggle } from '@/components/mode-toggle'
 import Typography from '@/components/ui/typography'
 import { Users, FileText, Calendar, Settings, Mail, History } from 'lucide-react'
+import EmployeeTable from '@/features/employee-table'
 
 export default function DashboardPage() {
   const { user, loading, signOut } = useAuth()
@@ -95,110 +96,121 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Navigation Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link href="/employees">
+          {/* Employee Management Section */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <Typography variant="T_Bold_H3" className="text-foreground">
+                  Employee Management
+                </Typography>
+                <Typography variant="T_Regular_H6" className="text-muted-foreground">
+                  Manage your organization&apos;s employees and their information
+                </Typography>
+              </div>
+              <div className="flex items-center gap-4">
+                <Link href="/employees">
+                  <Button variant="outline">
+                    <Users className="mr-2 h-4 w-4" />
+                    Full Employee View
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Employee Data Table */}
+            <EmployeeTable />
+          </div>
+
+          {/* Quick Actions Grid */}
+          <div className="mt-12">
+            <Typography variant="T_Bold_H3" className="text-foreground mb-6">
+              Quick Actions
+            </Typography>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Users className="h-6 w-6 text-blue-600" />
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <FileText className="h-6 w-6 text-green-600" />
                   </div>
                   <Typography variant="T_SemiBold_H5" className="text-card-foreground">
-                    Manage Employees
+                    Generate Payslips
                   </Typography>
                 </div>
                 <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
-                  Add, edit, and manage your organization&apos;s employees
+                  Create and send payslips for the current month
                 </Typography>
                 <Button className="w-full">
-                  View Employees
+                  Create Payslips
                 </Button>
               </div>
-            </Link>
-            
-            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <FileText className="h-6 w-6 text-green-600" />
+              
+              <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Calendar className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <Typography variant="T_SemiBold_H5" className="text-card-foreground">
+                    Attendance Tracking
+                  </Typography>
                 </div>
-                <Typography variant="T_SemiBold_H5" className="text-card-foreground">
-                  Generate Payslips
+                <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
+                  Track and manage employee attendance records
                 </Typography>
+                <Button className="w-full">
+                  View Attendance
+                </Button>
               </div>
-              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
-                Create and send payslips for the current month
-              </Typography>
-              <Button className="w-full">
-                Create Payslips
-              </Button>
-            </div>
-            
-            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Calendar className="h-6 w-6 text-purple-600" />
-                </div>
-                <Typography variant="T_SemiBold_H5" className="text-card-foreground">
-                  Attendance Tracking
-                </Typography>
-              </div>
-              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
-                Track and manage employee attendance records
-              </Typography>
-              <Button className="w-full">
-                View Attendance
-              </Button>
-            </div>
 
-            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Mail className="h-6 w-6 text-orange-600" />
+              <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Mail className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <Typography variant="T_SemiBold_H5" className="text-card-foreground">
+                    Email Templates
+                  </Typography>
                 </div>
-                <Typography variant="T_SemiBold_H5" className="text-card-foreground">
-                  Email Templates
+                <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
+                  Manage email templates for payslip delivery
                 </Typography>
+                <Button className="w-full">
+                  Manage Templates
+                </Button>
               </div>
-              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
-                Manage email templates for payslip delivery
-              </Typography>
-              <Button className="w-full">
-                Manage Templates
-              </Button>
-            </div>
 
-            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <History className="h-6 w-6 text-red-600" />
+              <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <History className="h-6 w-6 text-red-600" />
+                  </div>
+                  <Typography variant="T_SemiBold_H5" className="text-card-foreground">
+                    Send History
+                  </Typography>
                 </div>
-                <Typography variant="T_SemiBold_H5" className="text-card-foreground">
-                  Send History
+                <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
+                  View history of sent payslips and emails
                 </Typography>
+                <Button className="w-full">
+                  View History
+                </Button>
               </div>
-              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
-                View history of sent payslips and emails
-              </Typography>
-              <Button className="w-full">
-                View History
-              </Button>
-            </div>
 
-            <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <Settings className="h-6 w-6 text-gray-600" />
+              <div className="p-6 border rounded-lg bg-card hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    <Settings className="h-6 w-6 text-gray-600" />
+                  </div>
+                  <Typography variant="T_SemiBold_H5" className="text-card-foreground">
+                    Settings
+                  </Typography>
                 </div>
-                <Typography variant="T_SemiBold_H5" className="text-card-foreground">
-                  Settings
+                <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
+                  Configure organization settings and preferences
                 </Typography>
+                <Button className="w-full">
+                  Open Settings
+                </Button>
               </div>
-              <Typography variant="T_Regular_H6" className="text-muted-foreground mb-4">
-                Configure organization settings and preferences
-              </Typography>
-              <Button className="w-full">
-                Open Settings
-              </Button>
             </div>
           </div>
 
