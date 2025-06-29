@@ -4,7 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
  * Extract default column sizes from column definitions
  */
 export function extractDefaultColumnSizes<TData>(
-  columns: ColumnDef<TData, any>[]
+  columns: ColumnDef<TData, unknown>[]
 ): Record<string, number> {
   const defaultSizing: Record<string, number> = {};
   
@@ -23,7 +23,7 @@ export function extractDefaultColumnSizes<TData>(
  * Initialize column sizes from localStorage or defaults
  */
 export function initializeColumnSizes<TData>(
-  columns: ColumnDef<TData, any>[],
+  columns: ColumnDef<TData, unknown>[],
   tableId: string,
   setColumnSizing: (sizes: Record<string, number>) => void
 ): void {

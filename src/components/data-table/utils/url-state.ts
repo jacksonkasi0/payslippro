@@ -100,7 +100,6 @@ export function useUrlState<T>(
   const getValueFromUrl = useCallback(() => {
     // Check if we have a pending update for this key that hasn't been applied yet
     if (pendingUpdates.has(key)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return pendingUpdates.get(key)?.value as T;
     }
 
@@ -274,7 +273,7 @@ export function useUrlState<T>(
           const defaultSortOrder = "desc"; // Match the default from the component
           
           // First pass: identify which sort parameters are being updated
-          for (const [updateKey, _] of pendingUpdates.entries()) {
+          for (const updateKey of pendingUpdates.keys()) {
             if (updateKey === "sortBy") sortByInBatch = true;
             if (updateKey === "sortOrder") sortOrderInBatch = true;
           }

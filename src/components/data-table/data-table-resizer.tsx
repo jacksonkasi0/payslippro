@@ -4,9 +4,10 @@ import React from "react"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { GripVertical } from "lucide-react"
+import { Header } from "@tanstack/react-table"
 
 // Simplified resizer component without complex types
-export function DataTableResizer({ header, table }: { header: any; table: any }) {
+export function DataTableResizer<TData>({ header }: { header: Header<TData, unknown> }) {
   const isResizing = header.column.getIsResizing()
 
   return (

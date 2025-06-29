@@ -22,7 +22,6 @@ interface DataTableExportProps<TData extends ExportableData> {
   entityName?: string;
   columnMapping?: Record<string, string>;
   columnWidths?: Array<{ wch: number }>;
-  headers?: string[];
   size?: 'sm' | 'default' | 'lg';
 }
 
@@ -35,7 +34,6 @@ export function DataTableExport<TData extends ExportableData>({
   entityName = "items",
   columnMapping,
   columnWidths,
-  headers,
   size = 'default'
 }: DataTableExportProps<TData>): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
@@ -161,7 +159,7 @@ export function DataTableExport<TData extends ExportableData>({
 
       // Filter column widths to match visible columns and their order
       const exportColumnWidths = columnWidths ? 
-        orderedVisibleColumns.map((column, index) => {
+        orderedVisibleColumns.map((column) => {
           const originalIndex = visibleColumns.findIndex(vc => vc.id === column.id);
           return columnWidths[originalIndex] || { wch: 15 };
         }) :
@@ -236,7 +234,7 @@ export function DataTableExport<TData extends ExportableData>({
       })();
       
       const exportColumnWidths = columnWidths ?
-        visibleColumns.map((_, index) => columnWidths[index] || { wch: 15 }) :
+        visibleColumns.map((_column, index) => columnWidths[index] || { wch: 15 }) :
         visibleColumns.map(() => ({ wch: 15 }));
       
       // Update toast for processing
