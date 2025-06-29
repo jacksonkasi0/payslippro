@@ -79,7 +79,64 @@ export function useAuthState() {
   const signOut = async () => {
     setLoading(true)
     try {
-      await authService.signOut()
+      // Add timeout to prevent infinite loading on signOut
+      const signOutPromise = authService.signOut()
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Sign out timed out')), 30000) // 30 second timeout
+      })
+      
+      await Promise.race([signOutPromise, timeoutPromise])
+      
+      // After successful server-side sign out, immediately clear client-side state
+      console.log('Server-side sign out successful, clearing client-side auth state...')
+      setUser(null)
+      
+      // Clear any stored auth data
+      if (typeof window !== 'undefined') {
+        // Clear all possible Supabase localStorage keys
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && (key.includes('supabase') || key.includes('sb-'))) {
+            keysToRemove.push(key)
+          }
+        }
+        
+        keysToRemove.forEach(key => {
+          console.log('Clearing localStorage key:', key)
+          localStorage.removeItem(key)
+        })
+        
+        // Also clear session storage
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i)
+          if (key && (key.includes('supabase') || key.includes('sb-'))) {
+            console.log('Clearing sessionStorage key:', key)
+            sessionStorage.removeItem(key)
+          }
+        }
+        
+        // Force redirect to login page
+        console.log('Redirecting to login page...')
+        setTimeout(() => {
+          window.location.replace('/auth/login')
+        }, 100)
+      }
+      
+    } catch (error) {
+      console.error('Sign out error:', error)
+      // Even if sign out fails, clear the loading state and user
+      setUser(null)
+      
+      // Still redirect on error to ensure user is logged out
+      if (typeof window !== 'undefined') {
+        console.log('Sign out failed, but still redirecting to ensure user is logged out')
+        setTimeout(() => {
+          window.location.replace('/auth/login')
+        }, 100)
+      }
+      
+      throw error
     } finally {
       setLoading(false)
     }

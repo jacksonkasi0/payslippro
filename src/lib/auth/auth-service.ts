@@ -221,10 +221,57 @@ export const authService = {
 
   /**
    * Sign out user
+   * Uses server-side API to avoid client-side hanging issues
    */
   async signOut(): Promise<void> {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    console.log('Client-side signOut called, using server API...')
+    
+    try {
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      console.log('Signout server response status:', response.status)
+      
+      const result = await response.json()
+      console.log('Signout server response data:', result)
+      
+      if (!response.ok) {
+        throw new Error(result.error || `Server error: ${response.status}`)
+      }
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to sign out')
+      }
+      
+      console.log('Signed out successfully via server API!')
+      
+      // After successful server-side sign out, refresh client-side auth state
+      console.log('Refreshing client-side auth state...')
+      try {
+        // Clear the client-side session to ensure auth listeners are notified
+        await supabase.auth.signOut()
+      } catch (clientSignOutError) {
+        console.log('Client-side sign out call (expected to be already signed out):', clientSignOutError)
+        // This is expected since we already signed out server-side
+      }
+      
+      return Promise.resolve()
+    } catch (err) {
+      console.error('signOut caught error:', err)
+      
+      // Handle network and server errors
+      if (err instanceof Error) {
+        if (err.message.includes('fetch')) {
+          throw new Error('Network error. Please check your connection and try again.')
+        }
+      }
+      
+      throw err
+    }
   },
 
   /**
