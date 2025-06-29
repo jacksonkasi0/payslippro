@@ -278,11 +278,11 @@ export const authService = {
   /**
    * Reset password
    * Security: Rate limited by Supabase to prevent abuse
-   * Uses custom redirect to prevent email prefetching issues
+   * Uses direct redirect to client-side intermediate confirmation to prevent token consumption
    */
   async resetPassword(email: string): Promise<void> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/confirm`,
+      redirectTo: `${window.location.origin}/auth/confirm-reset`,
     })
     
     if (error) {
