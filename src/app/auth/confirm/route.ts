@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     let tokenParam = ''
     if (token_hash) tokenParam = `token_hash=${token_hash}`
     else if (token) tokenParam = `token=${token}`
-    else if (code) tokenParam = `code=${code}`
+    else if (code) tokenParam = `token_hash=${code}` // Pass code as token_hash
     
     redirect(`/auth/confirm-reset?${tokenParam}&type=recovery`)
   }
