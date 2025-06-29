@@ -79,10 +79,10 @@ function ResetPasswordPageContent() {
         timestamp: new Date().toISOString()
       })
       
-      // Add timeout to prevent hanging
+      // Server-side calls are more reliable, use longer timeout
       const updatePromise = updatePassword(values.password)
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Password update timed out')), 30000) // 30 second timeout
+        setTimeout(() => reject(new Error('Password update timed out')), 60000) // 60 second timeout
       })
       
       // Race between update and timeout
@@ -107,8 +107,10 @@ function ResetPasswordPageContent() {
       if (err instanceof Error) {
         if (err.message.includes('timed out')) {
           errorMessage = 'Password update timed out. Please try again or request a new reset link.'
-        } else if (err.message.includes('session')) {
+        } else if (err.message.includes('session') || err.message.includes('401')) {
           errorMessage = 'Your session has expired. Please request a new password reset link.'
+        } else if (err.message.includes('Network error')) {
+          errorMessage = 'Network error. Please check your connection and try again.'
         } else if (err.message.includes('weak')) {
           errorMessage = 'Password is too weak. Please choose a stronger password.'
         } else if (err.message.includes('8 characters')) {
@@ -116,7 +118,7 @@ function ResetPasswordPageContent() {
         } else if (err.message.includes('uppercase')) {
           errorMessage = err.message
         } else {
-          errorMessage = 'Failed to update password. Please try again.'
+          errorMessage = err.message || 'Failed to update password. Please try again.'
         }
       }
       

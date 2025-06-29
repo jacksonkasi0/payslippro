@@ -301,6 +301,7 @@ export const authService = {
   /**
    * Update password
    * Security: Must be called within an authenticated session from password reset flow
+   * Uses server-side API to avoid client-side hanging issues
    */
   async updatePassword(password: string): Promise<void> {
     console.log('updatePassword called with password length:', password.length)
@@ -314,30 +315,46 @@ export const authService = {
       throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number.')
     }
 
-    console.log('Calling supabase.auth.updateUser...')
+    console.log('Calling server-side password update API...')
     
     try {
-      const { data, error } = await supabase.auth.updateUser({
-        password
+      const response = await fetch('/api/auth/update-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
       })
       
-      console.log('supabase.auth.updateUser response:', { data, error })
+      console.log('Server response status:', response.status)
       
-      if (error) {
-        console.error('Password update error:', error)
-        if (error.message.includes('session')) {
-          throw new Error('Password reset session has expired. Please request a new reset link.')
-        } else if (error.message.includes('weak')) {
-          throw new Error('Password is too weak. Please choose a stronger password.')
-        } else {
-          throw error
-        }
+      const result = await response.json()
+      console.log('Server response data:', result)
+      
+      if (!response.ok) {
+        throw new Error(result.error || `Server error: ${response.status}`)
       }
       
-      console.log('Password updated successfully!')
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update password')
+      }
+      
+      console.log('Password updated successfully via server API!')
       return Promise.resolve()
     } catch (err) {
       console.error('updatePassword caught error:', err)
+      
+      // Handle network and server errors
+      if (err instanceof Error) {
+        if (err.message.includes('fetch')) {
+          throw new Error('Network error. Please check your connection and try again.')
+        } else if (err.message.includes('401')) {
+          throw new Error('Session expired. Please request a new password reset link.')
+        } else if (err.message.includes('400')) {
+          throw new Error(err.message.replace('Server error: 400', 'Invalid request'))
+        }
+      }
+      
       throw err
     }
   },
