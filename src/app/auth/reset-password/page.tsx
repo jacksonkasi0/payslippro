@@ -10,7 +10,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 
 // ** import icons
-import { GalleryVerticalEnd, Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { GalleryVerticalEnd, Eye, EyeOff, ArrowLeft, AlertCircle, RefreshCw } from "lucide-react"
 
 // ** import shared components
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // ** import hooks
 import { useAuth } from "@/hooks/useAuth"
@@ -59,6 +60,7 @@ function ResetPasswordPageContent() {
   const [error, setError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
+  const [tokenExpired, setTokenExpired] = useState(false)
   
   // Form
   const form = useForm<ResetPasswordFormValues>({
@@ -77,14 +79,27 @@ function ResetPasswordPageContent() {
       const tokenHash = searchParams.get('token_hash')
       const type = searchParams.get('type')
       
+      console.log('Token validation check:', {
+        verified,
+        hasTokenHash: !!tokenHash,
+        type,
+        timestamp: new Date().toISOString()
+      })
+      
       // For password reset, we strictly require verification flag, token_hash, and recovery type
       // Supabase's verifyOtp for recovery type specifically expects token_hash parameter
       const hasValidParams = verified === 'true' && tokenHash && type === 'recovery'
       
       if (!hasValidParams) {
+        console.warn('Invalid token parameters detected:', {
+          verified,
+          tokenHash: tokenHash ? 'present' : 'missing',
+          type
+        })
         setError('Invalid or expired reset link. The link may be malformed or has expired. Please request a new password reset.')
         setIsValidToken(false)
       } else {
+        console.log('Token parameters are valid')
         setIsValidToken(true)
       }
     }
@@ -97,15 +112,22 @@ function ResetPasswordPageContent() {
     if (!isValidToken) return
     
     setError(null)
+    setTokenExpired(false)
     setIsLoading(true)
     
     try {
-      console.log('Starting password update process...')
+      console.log('Starting password update process...', {
+        timestamp: new Date().toISOString()
+      })
       
       // Establish authenticated session with the reset token
       const tokenHash = searchParams.get('token_hash')
       
-      console.log('Token parameters:', { tokenHash: !!tokenHash })
+      console.log('Token parameters for session establishment:', { 
+        hasTokenHash: !!tokenHash,
+        tokenHashLength: tokenHash?.length,
+        timestamp: new Date().toISOString()
+      })
       
       // Strictly require token_hash for password reset flow
       if (!tokenHash) {
@@ -119,21 +141,35 @@ function ResetPasswordPageContent() {
         
         // Establish session using the reset token
         try {
-          console.log('Using verifyOtp with token_hash for password recovery')
+          console.log('Using verifyOtp with token_hash for password recovery', {
+            tokenHashPreview: `${tokenHash.substring(0, 8)}...`,
+            timestamp: new Date().toISOString()
+          })
+          
           const sessionResult = await supabase.auth.verifyOtp({
             type: 'recovery',
             token_hash: tokenHash,
           })
           
-          console.log('Session establishment result:', sessionResult)
+          console.log('Session establishment result:', {
+            hasError: !!sessionResult?.error,
+            errorCode: sessionResult?.error?.message,
+            hasSession: !!sessionResult?.data?.session,
+            hasUser: !!sessionResult?.data?.user,
+            timestamp: new Date().toISOString()
+          })
           
           if (sessionResult?.error) {
             console.error('Session establishment failed:', sessionResult.error)
             
-            // Provide specific error messages based on Supabase error types
-            if (sessionResult.error.message.includes('expired')) {
+            // Check for specific error types
+            const errorMessage = sessionResult.error.message.toLowerCase()
+            
+            if (errorMessage.includes('expired') || sessionResult.error.message.includes('otp_expired')) {
+              console.log('Token expired error detected')
+              setTokenExpired(true)
               throw new Error('Password reset token has expired. Please request a new reset link.')
-            } else if (sessionResult.error.message.includes('invalid')) {
+            } else if (errorMessage.includes('invalid') || errorMessage.includes('not found')) {
               throw new Error('Password reset token is invalid. Please request a new reset link.')
             } else {
               throw new Error('Password reset session could not be established. Please request a new reset link.')
@@ -155,7 +191,9 @@ function ResetPasswordPageContent() {
       }
       
       // Update the password
-      console.log('Updating password...')
+      console.log('Updating password...', {
+        timestamp: new Date().toISOString()
+      })
       await updatePassword(values.password)
       console.log('Password updated successfully')
       
@@ -178,8 +216,13 @@ function ResetPasswordPageContent() {
         // Use our custom error messages if available
         if (err.message.includes('Password reset')) {
           errorMessage = err.message
+          // Check if it's a token expiration error
+          if (err.message.includes('expired')) {
+            setTokenExpired(true)
+          }
         } else if (err.message.includes('session')) {
           errorMessage = 'Password reset session has expired. Please request a new reset link.'
+          setTokenExpired(true)
         } else if (err.message.includes('weak')) {
           errorMessage = 'Password is too weak. Please choose a stronger password.'
         } else if (err.message.includes('8 characters')) {
@@ -352,6 +395,7 @@ function ResetPasswordPageContent() {
                 <div className="flex flex-col gap-3">
                   <Link href="/auth/forgot-password">
                     <Button className="w-full">
+                      <RefreshCw className="mr-2 h-4 w-4" />
                       <Typography variant="T_SemiBold_H6">
                         Request new reset link
                       </Typography>
@@ -411,9 +455,26 @@ function ResetPasswordPageContent() {
                 </div>
                 
                 {error && (
-                  <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                  </div>
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <Typography variant="T_SemiBold_H6" className="text-sm">
+                          {error}
+                        </Typography>
+                        {tokenExpired && (
+                          <div className="pt-2">
+                            <Link href="/auth/forgot-password">
+                              <Button variant="outline" size="sm" className="w-full">
+                                <RefreshCw className="mr-2 h-3 w-3" />
+                                Request New Reset Link
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
                 )}
                 
                 <div className="grid gap-4">
@@ -552,4 +613,4 @@ export default function ResetPasswordPage() {
       <ResetPasswordPageContent />
     </Suspense>
   )
-} 
+}

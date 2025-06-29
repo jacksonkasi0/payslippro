@@ -9,7 +9,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 
 // ** import icons
-import { GalleryVerticalEnd, ArrowLeft } from "lucide-react"
+import { GalleryVerticalEnd, ArrowLeft, Clock, AlertCircle } from "lucide-react"
 
 // ** import shared components
 import { Button } from "@/components/ui/button"
@@ -23,6 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // ** import hooks
 import { useAuth } from "@/hooks/useAuth"
@@ -137,6 +138,24 @@ export default function ForgotPasswordPage() {
                     {sentEmail}
                   </Typography>
                 </div>
+
+                {/* Important Information Alert */}
+                <Alert>
+                  <Clock className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <Typography variant="T_SemiBold_H6" className="text-sm">
+                        Important Information:
+                      </Typography>
+                      <ul className="text-sm space-y-1 text-muted-foreground">
+                        <li>• The reset link is valid for <strong>1 hour</strong></li>
+                        <li>• If you request multiple links, only the <strong>most recent</strong> one will work</li>
+                        <li>• Check your spam folder if you don&apos;t see the email</li>
+                        <li>• Complete the reset process promptly to avoid expiration</li>
+                      </ul>
+                    </div>
+                  </AlertDescription>
+                </Alert>
                 
                 {error && (
                   <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
@@ -273,4 +292,4 @@ export default function ForgotPasswordPage() {
       </div>
     </div>
   )
-} 
+}
