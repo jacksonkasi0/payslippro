@@ -72,18 +72,17 @@ function ResetPasswordPageContent() {
   // Check if we have valid reset token on mount
   useEffect(() => {
     const checkToken = () => {
-      // Check for verification flag and required parameters
+      // Check for verification flag and required token_hash parameter
       const verified = searchParams.get('verified')
       const tokenHash = searchParams.get('token_hash')
-      const token = searchParams.get('token')
-      const code = searchParams.get('code')
       const type = searchParams.get('type')
       
-      // We need verification flag and one token parameter
-      const hasValidParams = verified === 'true' && (tokenHash || token || code) && type === 'recovery'
+      // For password reset, we strictly require verification flag, token_hash, and recovery type
+      // Supabase's verifyOtp for recovery type specifically expects token_hash parameter
+      const hasValidParams = verified === 'true' && tokenHash && type === 'recovery'
       
       if (!hasValidParams) {
-        setError('Invalid or expired reset link. Please request a new password reset.')
+        setError('Invalid or expired reset link. The link may be malformed or has expired. Please request a new password reset.')
         setIsValidToken(false)
       } else {
         setIsValidToken(true)
@@ -104,51 +103,54 @@ function ResetPasswordPageContent() {
       console.log('Starting password update process...')
       
       // Establish authenticated session with the reset token
-      const code = searchParams.get('code')
-      const token = searchParams.get('token') 
       const tokenHash = searchParams.get('token_hash')
       
-      console.log('Token parameters:', { code: !!code, token: !!token, tokenHash: !!tokenHash })
+      console.log('Token parameters:', { tokenHash: !!tokenHash })
       
-      if (code || token || tokenHash) {
+      // Strictly require token_hash for password reset flow
+      if (!tokenHash) {
+        throw new Error('Invalid reset token format. Please request a new password reset link.')
+      }
+      
+      if (tokenHash) {
         console.log('Establishing authenticated session...')
         const { createClient } = await import('@/lib/supabase/client')
         const supabase = createClient()
         
         // Establish session using the reset token
-        let sessionResult
         try {
-          if (tokenHash) {
-            console.log('Using verifyOtp with token_hash')
-            sessionResult = await supabase.auth.verifyOtp({
-              type: 'recovery',
-              token_hash: tokenHash,
-            })
-          } else if (code) {
-            console.log('Using verifyOtp with code as token_hash')
-            sessionResult = await supabase.auth.verifyOtp({
-              type: 'recovery',
-              token_hash: code,
-            })
-          } else if (token) {
-            console.log('Using verifyOtp with token as token_hash')
-            sessionResult = await supabase.auth.verifyOtp({
-              type: 'recovery',
-              token_hash: token,
-            })
-          }
+          console.log('Using verifyOtp with token_hash for password recovery')
+          const sessionResult = await supabase.auth.verifyOtp({
+            type: 'recovery',
+            token_hash: tokenHash,
+          })
           
           console.log('Session establishment result:', sessionResult)
           
           if (sessionResult?.error) {
             console.error('Session establishment failed:', sessionResult.error)
-            throw new Error('Password reset token has expired or is invalid. Please request a new reset link.')
+            
+            // Provide specific error messages based on Supabase error types
+            if (sessionResult.error.message.includes('expired')) {
+              throw new Error('Password reset token has expired. Please request a new reset link.')
+            } else if (sessionResult.error.message.includes('invalid')) {
+              throw new Error('Password reset token is invalid. Please request a new reset link.')
+            } else {
+              throw new Error('Password reset session could not be established. Please request a new reset link.')
+            }
           }
           
           console.log('Session established successfully')
         } catch (sessionError) {
           console.error('Session establishment error:', sessionError)
-          throw new Error('Failed to establish reset session. Please request a new reset link.')
+          
+          // If it's already our custom error, re-throw it
+          if (sessionError instanceof Error && sessionError.message.includes('Password reset')) {
+            throw sessionError
+          }
+          
+          // Otherwise, provide a generic error message
+          throw new Error('Failed to establish password reset session. Please request a new reset link.')
         }
       }
       
@@ -162,13 +164,33 @@ function ResetPasswordPageContent() {
         description: "Your password has been reset. You can now log in with your new password.",
         duration: 6000,
       })
+      
       // Redirect to login after 2 seconds
       setTimeout(() => {
         router.push('/auth/login')
       }, 2000)
     } catch (err) {
       console.error('Password update error:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update password'
+      
+      let errorMessage = 'Failed to update password'
+      
+      if (err instanceof Error) {
+        // Use our custom error messages if available
+        if (err.message.includes('Password reset')) {
+          errorMessage = err.message
+        } else if (err.message.includes('session')) {
+          errorMessage = 'Password reset session has expired. Please request a new reset link.'
+        } else if (err.message.includes('weak')) {
+          errorMessage = 'Password is too weak. Please choose a stronger password.'
+        } else if (err.message.includes('8 characters')) {
+          errorMessage = err.message // Use our client-side validation message
+        } else if (err.message.includes('uppercase')) {
+          errorMessage = err.message // Use our client-side validation message
+        } else {
+          errorMessage = 'Failed to update password. Please try again.'
+        }
+      }
+      
       setError(errorMessage)
       toast.error("Failed to update password", {
         description: errorMessage,
