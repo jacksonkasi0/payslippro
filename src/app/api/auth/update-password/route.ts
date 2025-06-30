@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update password server-side
-    const { data, error } = await supabase.auth.updateUser({
+    const { error } = await supabase.auth.updateUser({
       password
     })
     
@@ -64,4 +64,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}

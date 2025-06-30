@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
     
     const ids = body.ids
-      .map((id: any) => String(id))
+      .map((id: unknown) => String(id))
       .filter((id: string) => id.length > 0);
     
     if (ids.length === 0) {
@@ -125,4 +125,4 @@ export async function POST(request: NextRequest) {
       details: error instanceof Error ? error.message : String(error),
     }, { status: 500 });
   }
-} 
+}

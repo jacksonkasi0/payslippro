@@ -9,7 +9,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 
 // ** import icons
-import { GalleryVerticalEnd, ArrowLeft, Clock, AlertCircle } from "lucide-react"
+import { GalleryVerticalEnd, ArrowLeft, Clock } from "lucide-react"
 
 // ** import shared components
 import { Button } from "@/components/ui/button"

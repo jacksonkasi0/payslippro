@@ -66,7 +66,7 @@ export default async function ConfirmResetPage({ searchParams }: ConfirmResetPag
 
               <div className="text-center text-sm">
                 <Typography variant="T_Regular_H6" className="text-muted-foreground">
-                  If you didn't request a password reset, you can safely ignore this and your password will remain unchanged.
+                  If you didn&apos;t request a password reset, you can safely ignore this and your password will remain unchanged.
                 </Typography>
               </div>
             </div>
