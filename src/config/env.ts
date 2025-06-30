@@ -44,13 +44,23 @@ const validateEnv = () => {
   }
 }
 
-// Only validate environment on server-side and in production builds
-if (typeof window === 'undefined' && process.env.NODE_ENV !== 'development') {
-  try {
-    validateEnv()
-  } catch (error) {
-    console.error('Environment validation failed:', error)
-    // Don't throw in development to allow hot reloading
+// Always validate environment variables to catch missing values early
+try {
+  validateEnv()
+} catch (error) {
+  console.error('Environment validation failed:', error)
+  // In development, provide helpful guidance
+  if (process.env.NODE_ENV === 'development') {
+    console.error('\n🔧 To fix this issue:')
+    console.error('1. Create a .env.local file in your project root')
+    console.error('2. Add your Supabase credentials:')
+    console.error('   NEXT_PUBLIC_SUPABASE_URL="your_supabase_project_url"')
+    console.error('   NEXT_PUBLIC_SUPABASE_ANON_KEY="your_supabase_anon_key"')
+    console.error('3. Find these values at: https://supabase.com/dashboard/project/_/settings/api\n')
+  }
+  // Don't throw in development to allow hot reloading, but do throw in production
+  if (process.env.NODE_ENV === 'production') {
+    throw error
   }
 }
 
