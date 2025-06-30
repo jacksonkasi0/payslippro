@@ -86,6 +86,7 @@ export function ProfileImageUpload({
   };
 
   const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     
     // Cleanup object URL
@@ -97,21 +98,33 @@ export function ProfileImageUpload({
     onChange?.(null);
     onImageUrlChange?.(null);
     onDelete?.();
+    
+    // Reset the file input
+    const input = document.getElementById(inputId) as HTMLInputElement;
+    if (input) {
+      input.value = '';
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      handleFileUpload(file);
+    // Only allow drop if there's no existing image
+    if (!imageUrl) {
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        handleFileUpload(file);
+      }
     }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
+    // Only show drag state if there's no existing image
+    if (!imageUrl) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -125,9 +138,10 @@ export function ProfileImageUpload({
   return (
     <div 
       className={cn(
-        "relative rounded-full overflow-hidden border-2 border-dashed transition-colors group cursor-pointer",
+        "relative rounded-full overflow-hidden border-2 border-dashed transition-colors group",
         sizeClasses[size],
         isDragging ? "border-blue-400 bg-blue-50" : "border-gray-300 hover:border-gray-400",
+        !imageUrl && "cursor-pointer",
         className
       )}
       onDrop={handleDrop}
@@ -145,7 +159,7 @@ export function ProfileImageUpload({
           
           {/* Delete Button Overlay */}
           {showDeleteOnHover && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
               <Button
                 type="button"
                 variant="ghost"
@@ -173,19 +187,22 @@ export function ProfileImageUpload({
           <div className="absolute inset-0 bg-blue-50/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <Upload className="w-6 h-6 text-blue-600" />
           </div>
+          
+          {/* Upload Label - Only when no image */}
+          <label htmlFor={inputId} className="absolute inset-0 cursor-pointer">
+            <span className="sr-only">Upload profile image</span>
+          </label>
         </>
       )}
 
       {/* Hidden File Input */}
-      <label htmlFor={inputId} className="absolute inset-0 cursor-pointer">
-        <input
-          id={inputId}
-          type="file"
-          accept={acceptedTypes.join(",")}
-          className="sr-only"
-          onChange={handleInputChange}
-        />
-      </label>
+      <input
+        id={inputId}
+        type="file"
+        accept={acceptedTypes.join(",")}
+        className="sr-only"
+        onChange={handleInputChange}
+      />
     </div>
   );
 }
